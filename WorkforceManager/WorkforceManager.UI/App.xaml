@@ -6,7 +6,12 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <materialDesign:BundledTheme BaseTheme="Light" PrimaryColor="Indigo" SecondaryColor="Amber" />
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Defaults.xaml" />
+                <!-- في MaterialDesignThemes 5.x اتغير اسم ملف الأنماط الافتراضية
+                     القديمة (Material Design 2) لـ MaterialDesign2.Defaults.xaml —
+                     المسار القديم "MaterialDesignTheme.Defaults.xaml" مبقاش موجود
+                     في المكتبة وبيطلع IOException. هذا الملف ضروري عشان أنماط
+                     زي MaterialDesignTabRadioButton (مستخدمة في MainWindow) -->
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <!-- خط ووجهة العرض من اليمين لليسار افتراضيًا لكل الواجهة العربية -->
