@@ -18,6 +18,7 @@ namespace WorkforceManager.Data
         public DbSet<WorkerSkill> WorkerSkills => Set<WorkerSkill>();
         public DbSet<DailyProduction> DailyProductions => Set<DailyProduction>();
         public DbSet<Attendance> Attendances => Set<Attendance>();
+        public DbSet<Penalty> Penalties => Set<Penalty>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -67,6 +68,13 @@ namespace WorkforceManager.Data
                 .WithMany(w => w.AttendanceRecords)
                 .HasForeignKey(a => a.WorkerId)
                 .OnDelete(DeleteBehavior.Cascade); // حذف عامل (نادر، عادة بيتعمل له IsActive=false) يحذف سجلات حضوره
+
+            // ---------- Penalty: Worker (1-to-many) ----------
+            modelBuilder.Entity<Penalty>()
+                .HasOne(p => p.Worker)
+                .WithMany(w => w.Penalties)
+                .HasForeignKey(p => p.WorkerId)
+                .OnDelete(DeleteBehavior.Cascade); // نفس قاعدة الحضور: حذف عامل (نادر) يحذف جزاءاته
 
             // ---------- فهارس لتسريع البحث بالاسم ----------
             modelBuilder.Entity<Worker>()

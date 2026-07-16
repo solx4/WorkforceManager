@@ -1,0 +1,54 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using WorkforceManager.Core.Enums;
+
+namespace WorkforceManager.Core.Models
+{
+    /// <summary>
+    /// جزاء مسجّل على عامل في يوم معين: السبب (شرب سجاير، لبس هاندفري
+    /// أثناء الشغل، ...إلخ) ومقدار الخصم (نص يوم / يوم / 3 أيام / أسبوع).
+    /// الجزاء مستقل تمامًا عن سجل الحضور — ممكن يتسجل لعامل حاضر عادي،
+    /// وبيتخصم من إجمالي يوميات العامل في الأسبوع اللي وقع فيه، وبيظهر
+    /// في تقريره وبروفايله.
+    /// </summary>
+    // فهرس (WorkerId, Date) لتسريع تجميع جزاءات العامل خلال أسبوع معين في الحسابات والتقارير
+    [Index(nameof(WorkerId), nameof(Date))]
+    public class Penalty
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [ForeignKey(nameof(Worker))]
+        public int WorkerId { get; set; }
+
+        /// <summary>تاريخ وقوع المخالفة — بيحدد الأسبوع اللي هيتخصم منه الجزاء</summary>
+        [Required]
+        public DateTime Date { get; set; } = DateTime.Today;
+
+        /// <summary>سبب الجزاء (مثال: شرب سجاير، لبس هاندفري أثناء العمل، ...)</summary>
+        [Required(ErrorMessage = "سبب الجزاء مطلوب")]
+        [MaxLength(300)]
+        public string Reason { get; set; } = string.Empty;
+
+        /// <summary>مقدار الخصم المقرر (نص يوم / يوم / 3 أيام / أسبوع)</summary>
+        [Required]
+        public PenaltyDeduction Deduction { get; set; } = PenaltyDeduction.HalfDay;
+
+        /// <summary>ملاحظات إضافية اختيارية (تفاصيل الواقعة مثلاً)</summary>
+        [MaxLength(300)]
+        public string? Notes { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        // ------- العلاقات -------
+
+        public virtual Worker Worker { get; set; } = null!;
+
+        /// <summary>عدد اليوميات المخصومة فعليًا بهذا الجزاء (محسوبة من نوع الخصم)</summary>
+        [NotMapped]
+        public decimal DeductedWorkdays => Deduction.ToWorkdays();
+    }
+}

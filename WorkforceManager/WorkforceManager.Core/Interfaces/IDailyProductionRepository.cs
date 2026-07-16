@@ -9,5 +9,8 @@ namespace WorkforceManager.Core.Interfaces
 
         /// <summary>كل سجلات عامل معين خلال فترة زمنية (لعرض تاريخه وأداءه)</summary>
         Task<IReadOnlyList<DailyProduction>> GetByWorkerAndRangeAsync(int workerId, DateTime from, DateTime to);
+
+        /// <summary>كل سجلات الإنتاج لكل العمال خلال فترة زمنية (للملخص والتقرير الأسبوعي المجمّع)</summary>
+        Task<IReadOnlyList<DailyProduction>> GetByRangeAsync(DateTime from, DateTime to);
     }
 }

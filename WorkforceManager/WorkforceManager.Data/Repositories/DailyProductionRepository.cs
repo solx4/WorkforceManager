@@ -27,5 +27,16 @@ namespace WorkforceManager.Data.Repositories
                 .OrderBy(dp => dp.Date)
                 .ToListAsync();
         }
+
+        public async Task<IReadOnlyList<DailyProduction>> GetByRangeAsync(DateTime from, DateTime to)
+        {
+            return await DbSet
+                .Include(dp => dp.Worker) // اسم العامل مطلوب في تجميع الملخص الأسبوعي
+                .Include(dp => dp.ProductionStage)
+                    .ThenInclude(ps => ps.Product)
+                .Where(dp => dp.Date.Date >= from.Date && dp.Date.Date <= to.Date)
+                .OrderBy(dp => dp.Date)
+                .ToListAsync();
+        }
     }
 }

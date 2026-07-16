@@ -57,6 +57,9 @@ namespace WorkforceManager.Core.Models
         /// <summary>كل سجلات الحضور والغياب الخاصة بهذا العامل عبر الزمن</summary>
         public virtual ICollection<Attendance> AttendanceRecords { get; set; } = new List<Attendance>();
 
+        /// <summary>كل الجزاءات المسجّلة على هذا العامل عبر الزمن (بتتخصم من يومياته الأسبوعية)</summary>
+        public virtual ICollection<Penalty> Penalties { get; set; } = new List<Penalty>();
+
         [NotMapped]
         public string DisplayName => string.IsNullOrWhiteSpace(EmployeeCode)
             ? FullName

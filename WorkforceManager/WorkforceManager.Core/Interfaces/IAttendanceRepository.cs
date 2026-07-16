@@ -12,5 +12,8 @@ namespace WorkforceManager.Core.Interfaces
 
         /// <summary>كل سجلات الحضور في تاريخ معين (لتقرير الحضور اليومي لكل القسم)</summary>
         Task<IReadOnlyList<Attendance>> GetByDateAsync(DateTime date);
+
+        /// <summary>كل سجلات الحضور لكل العمال خلال فترة زمنية (للملخص والتقرير الأسبوعي المجمّع)</summary>
+        Task<IReadOnlyList<Attendance>> GetByRangeAsync(DateTime from, DateTime to);
     }
 }
