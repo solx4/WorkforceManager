@@ -40,6 +40,7 @@ namespace WorkforceManager.UI
                     services.AddScoped<IProductRepository, ProductRepository>();
                     services.AddScoped<IDailyProductionRepository, DailyProductionRepository>();
                     services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+                    services.AddScoped<IPenaltyRepository, PenaltyRepository>();
                     services.AddScoped<IGenericRepository<ProductionStage>, GenericRepository<ProductionStage>>();
                     services.AddScoped<IGenericRepository<WorkerSkill>, GenericRepository<WorkerSkill>>();
 
@@ -48,9 +49,17 @@ namespace WorkforceManager.UI
                     services.AddScoped<PerformanceEvaluationService>();
                     services.AddScoped<AttendanceService>();
                     services.AddScoped<WorkerProfileService>();
+                    services.AddScoped<PenaltyService>();
+                    services.AddScoped<WeeklySummaryService>();
+                    services.AddScoped<WorkerManagementService>();
 
                     // Windows / Views
                     services.AddSingleton<MainWindow>();
+                    // الشاشات الداخلية Transient: نسخة جديدة نظيفة مع كل تنقّل
+                    services.AddTransient<Views.WorkersView>();
+                    services.AddTransient<ViewModels.WorkersViewModel>();
+                    services.AddTransient<Views.DailyEntryView>();
+                    services.AddTransient<ViewModels.DailyEntryViewModel>();
                 })
                 .Build();
         }
@@ -59,11 +68,20 @@ namespace WorkforceManager.UI
         {
             await AppHost.StartAsync();
 
-            // إنشاء قاعدة البيانات تلقائيًا لو مش موجودة (أول تشغيل للتطبيق)
             using (var scope = AppHost.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                await db.Database.EnsureCreatedAsync();
+
+                // نسخة احتياطية يومية قبل أي تعديل على قاعدة البيانات، عشان لو
+                // الـ Migration فشل لأي سبب تفضل عندنا نسخة سليمة من قبل التعديل
+                var dbPath = db.Database.GetDbConnection().DataSource;
+                DatabaseBackupService.RunDailyBackup(dbPath);
+
+                // تطبيق أي Migration جديدة تلقائيًا (بيُنشئ قاعدة البيانات من الصفر
+                // لو مش موجودة أصلاً) — بديل EnsureCreatedAsync عشان تحديثات
+                // النماذج المستقبلية تتطبق على قاعدة بيانات العميل الحالية من
+                // غير ما نمسح بياناته
+                await db.Database.MigrateAsync();
                 await DatabaseSeeder.SeedIfEmptyAsync(db);
             }
 

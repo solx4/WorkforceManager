@@ -5,7 +5,9 @@
         Title="نظام إدارة إنتاجية وأجور العمال"
         Height="720" Width="1200"
         WindowStartupLocation="CenterScreen"
-        FontFamily="Segoe UI">
+        WindowState="Maximized"
+        FlowDirection="RightToLeft"
+        FontFamily="Segoe UI" FontSize="14">
 
     <Grid>
         <Grid.ColumnDefinitions>

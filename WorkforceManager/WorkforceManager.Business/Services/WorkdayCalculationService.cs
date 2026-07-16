@@ -53,6 +53,42 @@ namespace WorkforceManager.Business.Services
             return record;
         }
 
+        /// <summary>
+        /// يسجل إنتاج مجموعة عمال على نفس المرحلة في نفس اليوم دفعة واحدة —
+        /// أساس شاشة الإدخال السريع: بدل ما المدير يسجل عامل عامل، بيدخل
+        /// أرقام الكل ويحفظ مرة واحدة (حفظة واحدة على قاعدة البيانات).
+        /// </summary>
+        public async Task<int> RecordProductionBatchAsync(
+            int productionStageId, DateTime date,
+            IEnumerable<(int WorkerId, int PieceCount)> entries, string? notes = null)
+        {
+            var stage = await _stageRepo.GetByIdAsync(productionStageId)
+                ?? throw new InvalidOperationException("المرحلة المحددة غير موجودة");
+
+            var count = 0;
+            foreach (var (workerId, pieceCount) in entries)
+            {
+                // القطع الصفرية/السالبة بتتتخطى بصمت — معناها العامل ده مشتغلش على المرحلة دي
+                if (pieceCount <= 0) continue;
+
+                await _productionRepo.AddAsync(new DailyProduction
+                {
+                    WorkerId = workerId,
+                    ProductionStageId = productionStageId,
+                    Date = date.Date,
+                    PieceCount = pieceCount,
+                    PiecesPerWorkdayAtEntry = stage.PiecesPerWorkday, // نفس الـ Snapshot بتاع التسجيل الفردي
+                    Notes = notes
+                });
+                count++;
+            }
+
+            if (count > 0)
+                await _productionRepo.SaveChangesAsync();
+
+            return count;
+        }
+
         /// <summary>إجمالي عدد اليوميات المنجزة لعامل معين في تاريخ معين (مجموع كل المراحل التي عمل عليها)</summary>
         public async Task<decimal> GetDailyWorkdaysAsync(int workerId, DateTime date)
         {
