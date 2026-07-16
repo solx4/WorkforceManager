@@ -29,5 +29,51 @@ namespace WorkforceManager.Data.Repositories
                         .ThenInclude(ps => ps.Product)
                 .FirstOrDefaultAsync(w => w.Id == workerId);
         }
+
+        public async Task<IReadOnlyList<Worker>> SearchBySkillAsync(string skillQuery)
+        {
+            var query = skillQuery.Trim();
+
+            // البحث بيشمل اسم المرحلة أو اسم المنتج أو ملاحظات المهارات النصية
+            // (SkillsNotes) — لأن الربط الدقيق بالمراحل لسه بيتبني بالتدريج،
+            // والملاحظات النصية هي المرجع الحالي لمهارات معظم العمال
+            return await DbSet
+                .Include(w => w.Skills)
+                    .ThenInclude(s => s.ProductionStage)
+                        .ThenInclude(ps => ps.Product)
+                .Where(w => w.IsActive && (
+                    w.Skills.Any(s =>
+                        EF.Functions.Like(s.ProductionStage.StageName, $"%{query}%") ||
+                        EF.Functions.Like(s.ProductionStage.Product.Name, $"%{query}%")) ||
+                    (w.SkillsNotes != null && EF.Functions.Like(w.SkillsNotes, $"%{query}%"))))
+                .OrderBy(w => w.FullName)
+                .ToListAsync();
+        }
+
+        public async Task<IReadOnlyList<Worker>> GetActiveWithSkillsAsync()
+        {
+            return await DbSet
+                .Include(w => w.Skills)
+                    .ThenInclude(s => s.ProductionStage)
+                        .ThenInclude(ps => ps.Product)
+                .Where(w => w.IsActive)
+                .OrderBy(w => w.FullName)
+                .ToListAsync();
+        }
+
+        public async Task<bool> EmployeeCodeExistsAsync(string employeeCode, int? excludeWorkerId = null)
+        {
+            var code = employeeCode.Trim();
+            return await DbSet.AnyAsync(w =>
+                w.EmployeeCode == code && (excludeWorkerId == null || w.Id != excludeWorkerId));
+        }
+
+        public async Task<IReadOnlyList<Worker>> GetQualifiedForStageAsync(int productionStageId)
+        {
+            return await DbSet
+                .Where(w => w.IsActive && w.Skills.Any(s => s.ProductionStageId == productionStageId))
+                .OrderBy(w => w.FullName)
+                .ToListAsync();
+        }
     }
 }
