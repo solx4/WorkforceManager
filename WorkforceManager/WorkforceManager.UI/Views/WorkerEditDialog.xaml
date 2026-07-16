@@ -1,0 +1,40 @@
+<Window x:Class="WorkforceManager.UI.Views.WorkerEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="إضافة عامل جديد"
+        Width="440" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        FlowDirection="RightToLeft" FontSize="14" FontFamily="Segoe UI">
+
+    <!-- نافذة إضافة/تعديل عامل: نفس الفورم للحالتين، بيتملى مسبقًا في حالة التعديل -->
+    <StackPanel Margin="20">
+        <TextBlock Text="اسم العامل (إجباري)" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBox x:Name="NameBox" Padding="8,6" Margin="0,0,0,12" />
+
+        <TextBlock Text="الكود الوظيفي" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBox x:Name="CodeBox" Padding="8,6" Margin="0,0,0,12" />
+
+        <TextBlock Text="رقم التليفون" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBox x:Name="PhoneBox" Padding="8,6" Margin="0,0,0,12" />
+
+        <TextBlock Text="تاريخ الالتحاق" FontWeight="Bold" Margin="0,0,0,4" />
+        <DatePicker x:Name="HireDatePicker" Margin="0,0,0,12" />
+
+        <TextBlock Text="ملاحظات المهارات (اختياري)" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBox x:Name="NotesBox" Padding="8,6" Margin="0,0,0,16"
+                 TextWrapping="Wrap" AcceptsReturn="True" Height="70"
+                 VerticalScrollBarVisibility="Auto" />
+
+        <!-- رسالة الخطأ (بتظهر لو الاسم فاضي مثلاً) -->
+        <TextBlock x:Name="ErrorText" Foreground="#B00020" FontSize="12"
+                   Margin="0,0,0,8" Visibility="Collapsed" TextWrapping="Wrap" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+            <Button Content="حفظ" Click="Save_Click" IsDefault="True"
+                    Background="#1F3864" Foreground="White" Padding="24,8"
+                    BorderThickness="0" FontWeight="Bold" Margin="0,0,8,0" Cursor="Hand" />
+            <Button Content="إلغاء" IsCancel="True" Padding="24,8" Cursor="Hand" />
+        </StackPanel>
+    </StackPanel>
+</Window>
