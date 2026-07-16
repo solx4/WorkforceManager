@@ -57,9 +57,15 @@ Core  <----------------------- UI
   plus their DTOs in `DTOs/`.
 - **WorkforceManager.UI** — WPF, MVVM (CommunityToolkit.Mvvm) + MaterialDesignThemes. `App.xaml.cs` wires
   up DI via `Microsoft.Extensions.Hosting`'s `Host` (`AppHost`) — this is the single place new
-  repositories/services/views get registered. `Views/` currently only has a README describing the planned
-  screens (WorkersView, ProductsView, DailyEntryView, ReportsView) — actual view/viewmodel implementation
-  is still pending.
+  repositories/services/views get registered. `WorkersView` (+ `WorkersViewModel`, `WorkerEditDialog`) is
+  implemented: workers grid with current-week stats, unified name/skill search, profile panel with skills
+  management and weekly history, add/edit/soft-delete. `DailyEntryView` is implemented: one shared date +
+  3 tabs — batch production entry per stage (qualified workers, falls back to all actives when no skills
+  are linked yet), attendance grid (upsert per worker/date), and penalties (add with reason/deduction,
+  list + delete for the day). ProductsView and ReportsView are still placeholders in `MainWindow`. ViewModels take `IServiceScopeFactory` and create a scope per operation
+  (keeps DbContext short-lived). Gotcha: WPF implicit styles don't apply to derived types, so the
+  `TargetType="Window"` style in App.xaml does NOT hit `MainWindow` — set `FlowDirection="RightToLeft"`
+  explicitly on each window.
 
 ### Domain model relationships
 
@@ -74,6 +80,10 @@ Core  <----------------------- UI
   protect historical records.
 - `Attendance`: one row per worker per date (unique index), independent of `DailyProduction` — a worker can
   be present with no production logged, but absence implies no production. Cascade-deletes with `Worker`.
+- `Penalty`: a disciplinary penalty on a worker on a date (reason + `PenaltyDeduction` enum: HalfDay=0.5,
+  OneDay=1, ThreeDays=3, OneWeek=6 workdays — a work week is 6 days since Friday is off). Independent of
+  attendance (can be issued while present). Cascade-deletes with `Worker`. Deleting a wrongly-entered
+  penalty is a hard delete (no soft-delete value).
 - Soft-delete convention: `Worker.IsActive` / `Product.IsActive` / `ProductionStage.IsActive` flags are used
   instead of hard deletes, to preserve historical production/attendance records.
 
@@ -87,3 +97,15 @@ Core  <----------------------- UI
   absence is neutral (`Average`). Thresholds (`TopPerformerThreshold`, `AboveAverageThreshold`,
   `BelowAverageThreshold`) are relative percentages vs. team average, defined as constants in that service.
 - `AttendanceService.RecordAttendanceAsync` is an upsert (one record per worker/date).
+- `WeeklySummaryService` is the heart of weekly math. The work week runs **Thursday → Wednesday**
+  (`GetWorkWeekRange`). Weekly counters are computed on the fly from `DailyProduction`/`Attendance`/
+  `Penalty` records — nothing weekly is stored, so "a new week starts fresh" while all history stays
+  queryable. Net workdays = produced − unexcused-absence deduction (**0.5 workday per
+  `AbsentWithoutPermission` day**; excused absence costs nothing) − penalty deductions. Best worker of
+  the week = highest net, only if they produced and net > 0.
+
+## Environment note
+
+.NET 8 SDK was installed via winget but may not be in PATH for fresh shells; if `dotnet` isn't found in
+PowerShell, prepend `$env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" +
+[System.Environment]::GetEnvironmentVariable("PATH","User")`.

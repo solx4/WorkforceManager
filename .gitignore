@@ -23,3 +23,6 @@ x86/
 *.db
 *.db-shm
 *.db-wal
+
+## Word temp lock files
+~$*.docx
