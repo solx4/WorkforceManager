@@ -73,29 +73,52 @@ namespace WorkforceManager.UI
 
         protected override async void OnStartup(StartupEventArgs e)
         {
-            await AppHost.StartAsync();
-
-            using (var scope = AppHost.Services.CreateScope())
+            // معالج أخطاء عام: أي استثناء غير متوقع يوصل لخيط الواجهة بيظهر
+            // للمستخدم برسالة واضحة بدل ما البرنامج يقفل فجأة من غير سبب مفهوم
+            DispatcherUnhandledException += (_, args) =>
             {
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                MessageBox.Show(
+                    $"حصل خطأ غير متوقع:\n\n{args.Exception.Message}",
+                    "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
+                args.Handled = true; // منع إغلاق البرنامج بسبب الخطأ
+            };
 
-                // نسخة احتياطية يومية قبل أي تعديل على قاعدة البيانات، عشان لو
-                // الـ Migration فشل لأي سبب تفضل عندنا نسخة سليمة من قبل التعديل
-                var dbPath = db.Database.GetDbConnection().DataSource;
-                DatabaseBackupService.RunDailyBackup(dbPath);
+            try
+            {
+                await AppHost.StartAsync();
 
-                // تطبيق أي Migration جديدة تلقائيًا (بيُنشئ قاعدة البيانات من الصفر
-                // لو مش موجودة أصلاً) — بديل EnsureCreatedAsync عشان تحديثات
-                // النماذج المستقبلية تتطبق على قاعدة بيانات العميل الحالية من
-                // غير ما نمسح بياناته
-                await db.Database.MigrateAsync();
-                await DatabaseSeeder.SeedIfEmptyAsync(db);
+                using (var scope = AppHost.Services.CreateScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                    // نسخة احتياطية يومية قبل أي تعديل على قاعدة البيانات، عشان لو
+                    // الـ Migration فشل لأي سبب تفضل عندنا نسخة سليمة من قبل التعديل
+                    var dbPath = db.Database.GetDbConnection().DataSource;
+                    DatabaseBackupService.RunDailyBackup(dbPath);
+
+                    // تطبيق أي Migration جديدة تلقائيًا (بيُنشئ قاعدة البيانات من الصفر
+                    // لو مش موجودة أصلاً) — بديل EnsureCreatedAsync عشان تحديثات
+                    // النماذج المستقبلية تتطبق على قاعدة بيانات العميل الحالية من
+                    // غير ما نمسح بياناته
+                    await db.Database.MigrateAsync();
+                    await DatabaseSeeder.SeedIfEmptyAsync(db);
+                }
+
+                var mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
+                mainWindow.Show();
+
+                base.OnStartup(e);
             }
-
-            var mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
-            mainWindow.Show();
-
-            base.OnStartup(e);
+            catch (Exception ex)
+            {
+                // فشل بدء التشغيل (قاعدة بيانات مقفولة/تالفة، مساحة قرص، ...):
+                // نعرض السبب بوضوح ونقفل بأمان بدل ما البرنامج يختفي من غير رسالة
+                MessageBox.Show(
+                    $"تعذّر بدء تشغيل البرنامج:\n\n{ex.Message}\n\n" +
+                    "لو المشكلة مستمرة، فيه نسخة احتياطية من البيانات في مجلد Backups.",
+                    "خطأ في بدء التشغيل", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown(-1);
+            }
         }
 
         protected override async void OnExit(ExitEventArgs e)
