@@ -9,5 +9,8 @@ namespace WorkforceManager.Core.Interfaces
 
         /// <summary>كل المنتجات النشطة فقط مع مراحلها (للاستخدام في شاشة تسجيل الإنتاج)</summary>
         Task<IReadOnlyList<Product>> GetActiveWithStagesAsync();
+
+        /// <summary>كل المنتجات (النشطة والموقوفة) مع كل مراحلها — لشاشة إدارة المنتجات</summary>
+        Task<IReadOnlyList<Product>> GetAllWithStagesAsync();
     }
 }

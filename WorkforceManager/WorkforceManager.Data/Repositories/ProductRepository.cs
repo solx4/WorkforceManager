@@ -23,5 +23,14 @@ namespace WorkforceManager.Data.Repositories
                 .OrderBy(p => p.Name)
                 .ToListAsync();
         }
+
+        public async Task<IReadOnlyList<Product>> GetAllWithStagesAsync()
+        {
+            // شاشة الإدارة محتاجة كل حاجة بما فيها الموقوف (بيظهر بعلامة مميزة)
+            return await DbSet
+                .Include(p => p.Stages)
+                .OrderBy(p => p.Name)
+                .ToListAsync();
+        }
     }
 }
