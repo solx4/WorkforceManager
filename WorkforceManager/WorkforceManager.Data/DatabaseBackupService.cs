@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace WorkforceManager.Data
 {
     /// <summary>
@@ -10,6 +12,9 @@ namespace WorkforceManager.Data
     {
         /// <summary>عدد أيام الاحتفاظ بالنسخ الاحتياطية قبل حذف الأقدم منها تلقائيًا</summary>
         private const int RetentionDays = 30;
+
+        /// <summary>بادئة اسم ملف النسخة الاحتياطية (يتبعها التاريخ بصيغة yyyy-MM-dd)</summary>
+        private const string BackupPrefix = "workforce_";
 
         /// <summary>
         /// بياخد نسخة من قاعدة البيانات بتاريخ النهاردة لو مفيش نسخة اتاخدت
@@ -24,7 +29,7 @@ namespace WorkforceManager.Data
             var backupsFolder = Path.Combine(Path.GetDirectoryName(dbPath)!, "Backups");
             Directory.CreateDirectory(backupsFolder);
 
-            var todayBackupPath = Path.Combine(backupsFolder, $"workforce_{DateTime.Today:yyyy-MM-dd}.db");
+            var todayBackupPath = Path.Combine(backupsFolder, $"{BackupPrefix}{DateTime.Today:yyyy-MM-dd}.db");
             if (!File.Exists(todayBackupPath))
             {
                 File.Copy(dbPath, todayBackupPath);
@@ -33,14 +38,26 @@ namespace WorkforceManager.Data
             CleanupOldBackups(backupsFolder);
         }
 
-        /// <summary>بيمسح أي نسخة احتياطية أقدم من فترة الاحتفاظ المحددة (RetentionDays)</summary>
+        /// <summary>
+        /// بيمسح أي نسخة احتياطية أقدم من فترة الاحتفاظ المحددة (RetentionDays).
+        /// بيعتمد على التاريخ المكتوب في اسم الملف نفسه (workforce_yyyy-MM-dd.db)
+        /// مش على File.GetCreationTime — لأن تاريخ إنشاء الملف على ويندوز غير
+        /// موثوق (بيتغير عند النسخ/الاستعادة، وفيه ظاهرة File System Tunneling
+        /// اللي بتخلي ملف جديد يورث تاريخ ملف قديم بنفس الاسم).
+        /// </summary>
         private static void CleanupOldBackups(string backupsFolder)
         {
             var cutoffDate = DateTime.Today.AddDays(-RetentionDays);
 
-            foreach (var file in Directory.GetFiles(backupsFolder, "workforce_*.db"))
+            foreach (var file in Directory.GetFiles(backupsFolder, $"{BackupPrefix}*.db"))
             {
-                if (File.GetCreationTime(file) < cutoffDate)
+                var fileName = Path.GetFileNameWithoutExtension(file);
+                var datePart = fileName.Substring(BackupPrefix.Length); // الجزء بعد البادئة = التاريخ
+
+                // أي ملف اسمه مش متطابق مع الصيغة المتوقعة بنسيبه (مش بنمسحه) احتياطًا
+                if (DateTime.TryParseExact(datePart, "yyyy-MM-dd",
+                        CultureInfo.InvariantCulture, DateTimeStyles.None, out var backupDate)
+                    && backupDate < cutoffDate)
                 {
                     File.Delete(file);
                 }
