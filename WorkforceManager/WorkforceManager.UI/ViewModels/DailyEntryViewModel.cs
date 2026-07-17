@@ -249,18 +249,24 @@ namespace WorkforceManager.UI.ViewModels
         [RelayCommand]
         private async Task SaveAttendanceAsync()
         {
+            // تجميع الصفوف اللي المستخدم حدّد لها حالة ("—" معناها مفيش تسجيل، بنسيبه)
+            var toSave = AttendanceRows
+                .Where(row => row.SelectedStatus?.Value is not null)
+                .Select(row => (row.WorkerId, Status: row.SelectedStatus!.Value!.Value))
+                .ToList();
+
+            if (toSave.Count == 0)
+            {
+                MessageBox.Show("مفيش أي حالة حضور محددة للحفظ", "تنبيه",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             using var scope = _scopeFactory.CreateScope();
             var attendanceService = scope.ServiceProvider.GetRequiredService<AttendanceService>();
 
-            var saved = 0;
-            foreach (var row in AttendanceRows)
-            {
-                // "—" معناها مفيش تسجيل لليوم ده — بنسيبه زي ما هو
-                if (row.SelectedStatus?.Value is not { } status) continue;
-
-                await attendanceService.RecordAttendanceAsync(row.WorkerId, EntryDate, status);
-                saved++;
-            }
+            // حفظ جماعي في حفظة واحدة بدل استعلام + حفظ لكل عامل
+            var saved = await attendanceService.RecordAttendanceBatchAsync(EntryDate, toSave);
 
             MessageBox.Show($"تم حفظ حضور {saved} عامل بتاريخ {EntryDate:yyyy/MM/dd}",
                 "تم الحفظ", MessageBoxButton.OK, MessageBoxImage.Information);

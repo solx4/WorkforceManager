@@ -54,6 +54,48 @@ namespace WorkforceManager.Business.Services
             return record;
         }
 
+        /// <summary>
+        /// يسجل حضور مجموعة عمال في نفس اليوم دفعة واحدة (Upsert جماعي).
+        /// أساس زر "حفظ الحضور" في شاشة التسجيل: بدل ما نعمل استعلام +
+        /// حفظ منفصل لكل عامل (اللي بيبقى عشرات الرحلات لقاعدة البيانات)،
+        /// بنحمّل سجلات اليوم الموجودة مرة واحدة وبنحفظ كل التعديلات في
+        /// حفظة واحدة. بيرجع عدد العمال اللي اتسجلوا/اتحدّثوا.
+        /// </summary>
+        public async Task<int> RecordAttendanceBatchAsync(
+            DateTime date, IEnumerable<(int WorkerId, AttendanceStatus Status)> entries)
+        {
+            var entryList = entries.ToList();
+            if (entryList.Count == 0) return 0;
+
+            // كل سجلات اليوم الموجودة مرة واحدة، مفهرسة بالعامل للوصول السريع
+            var existingByWorker = (await _attendanceRepo.GetByDateAsync(date))
+                .ToDictionary(a => a.WorkerId);
+
+            foreach (var (workerId, status) in entryList)
+            {
+                if (existingByWorker.TryGetValue(workerId, out var existing))
+                {
+                    // الحفظ الجماعي بيتعامل مع الحالة بس (من غير أوقات حضور/انصراف)
+                    existing.Status = status;
+                    existing.CheckInTime = null;
+                    existing.CheckOutTime = null;
+                    _attendanceRepo.Update(existing);
+                }
+                else
+                {
+                    await _attendanceRepo.AddAsync(new Attendance
+                    {
+                        WorkerId = workerId,
+                        Date = date.Date,
+                        Status = status
+                    });
+                }
+            }
+
+            await _attendanceRepo.SaveChangesAsync(); // حفظة واحدة لكل التعديلات
+            return entryList.Count;
+        }
+
         /// <summary>يبني ملخص حضور عامل معين خلال فترة زمنية (افتراضيًا آخر 30 يوم لو مفيش تاريخ محدد)</summary>
         public async Task<AttendanceSummaryDto> GetSummaryAsync(int workerId, DateTime from, DateTime to)
         {
