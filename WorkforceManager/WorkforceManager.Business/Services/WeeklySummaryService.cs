@@ -1,6 +1,7 @@
 using WorkforceManager.Business.DTOs;
 using WorkforceManager.Core.Enums;
 using WorkforceManager.Core.Interfaces;
+using WorkforceManager.Core.Models;
 
 namespace WorkforceManager.Business.Services
 {
@@ -67,65 +68,99 @@ namespace WorkforceManager.Business.Services
             var attendance = await _attendanceRepo.GetByRangeAsync(weekStart, weekEnd);
             var penalties = await _penaltyRepo.GetByRangeAsync(weekStart, weekEnd);
 
-            // كل العمال اللي ليهم أي نشاط في الأسبوع (إنتاج أو حضور أو جزاء) لازم يظهروا في الملخص
-            var workerIds = production.Select(p => p.WorkerId)
-                .Concat(attendance.Select(a => a.WorkerId))
-                .Concat(penalties.Select(p => p.WorkerId))
-                .Distinct()
-                .ToList();
+            return BuildTeamSummaryForWeek(weekStart, weekEnd, production, attendance, penalties);
+        }
+
+        /// <summary>
+        /// الملخص الأسبوعي لعامل واحد بس (لبروفايله وتقريره الفردي).
+        /// بيرجع null لو العامل مالوش أي نشاط في الأسبوع ده.
+        /// </summary>
+        public async Task<WorkerWeeklySummaryDto?> GetWorkerWeeklySummaryAsync(int workerId, DateTime anyDateInWeek)
+        {
+            var team = await GetTeamWeeklySummaryAsync(anyDateInWeek);
+            return team.FirstOrDefault(s => s.WorkerId == workerId);
+        }
+
+        /// <summary>
+        /// الهستوري الأسبوعي الكامل لعامل: ملخص كل أسبوع من "from" لحد "to"،
+        /// الأحدث أولًا — ده اللي بيظهر في بروفايل العامل كسجل تاريخي،
+        /// والقديم كله محفوظ لأنه بيتحسب من السجلات الدائمة.
+        ///
+        /// الأداء: بنحمّل بيانات كل الفريق للفترة كلها مرة واحدة (3 استعلامات
+        /// فقط مهما كان عدد الأسابيع)، وبنقسّمها على الأسابيع في الذاكرة —
+        /// بدل ما نعمل استعلامات منفصلة لكل أسبوع. تحميل الفريق (مش العامل
+        /// وحده) ضروري عشان نحدد "أحسن عامل" في كل أسبوع صح.
+        /// </summary>
+        public async Task<List<WorkerWeeklySummaryDto>> GetWorkerWeeklyHistoryAsync(int workerId, DateTime from, DateTime to)
+        {
+            var (firstWeekStart, _) = GetWorkWeekRange(from);
+            var (lastWeekStart, lastWeekEnd) = GetWorkWeekRange(to);
+
+            // تحميل الفترة كلها دفعة واحدة (3 استعلامات إجمالًا)
+            var production = await _productionRepo.GetByRangeAsync(firstWeekStart, lastWeekEnd);
+            var attendance = await _attendanceRepo.GetByRangeAsync(firstWeekStart, lastWeekEnd);
+            var penalties = await _penaltyRepo.GetByRangeAsync(firstWeekStart, lastWeekEnd);
+
+            // تقسيم كل نوع بيانات على أسابيعه (بمفتاح = تاريخ بداية الأسبوع = الخميس)
+            var productionByWeek = production.ToLookup(p => GetWorkWeekRange(p.Date).WeekStart);
+            var attendanceByWeek = attendance.ToLookup(a => GetWorkWeekRange(a.Date).WeekStart);
+            var penaltiesByWeek = penalties.ToLookup(p => GetWorkWeekRange(p.Date).WeekStart);
+
+            var history = new List<WorkerWeeklySummaryDto>();
+            for (var cursor = firstWeekStart; cursor <= lastWeekStart; cursor = cursor.AddDays(7))
+            {
+                var team = BuildTeamSummaryForWeek(
+                    cursor, cursor.AddDays(6),
+                    productionByWeek[cursor], attendanceByWeek[cursor], penaltiesByWeek[cursor]);
+
+                // بناخد سطر العامل المطلوب بس من ملخص الأسبوع (لو ليه نشاط فيه)
+                var mine = team.FirstOrDefault(s => s.WorkerId == workerId);
+                if (mine is not null)
+                    history.Add(mine);
+            }
+
+            // الأحدث الأول — أول حاجة المدير عايز يشوفها هي آخر أسبوع
+            history.Reverse();
+            return history;
+        }
+
+        /// <summary>
+        /// يبني ملخص أسبوع كامل لكل العمال من قوائم مُفلترة مسبقًا لنفس الأسبوع،
+        /// مرتّبين بصافي اليوميات، مع تحديد أحسن عامل. كل الحسابات في الذاكرة
+        /// (من غير أي استعلام) — نقطة الاستخدام المشتركة بين الملخص الأسبوعي
+        /// والهستوري عشان القاعدة الحسابية تفضل مكان واحد.
+        /// </summary>
+        private static List<WorkerWeeklySummaryDto> BuildTeamSummaryForWeek(
+            DateTime weekStart, DateTime weekEnd,
+            IEnumerable<DailyProduction> production,
+            IEnumerable<Attendance> attendance,
+            IEnumerable<Penalty> penalties)
+        {
+            var productionByWorker = production.ToLookup(p => p.WorkerId);
+            var attendanceByWorker = attendance.ToLookup(a => a.WorkerId);
+            var penaltiesByWorker = penalties.ToLookup(p => p.WorkerId);
+
+            // كل العمال اللي ليهم أي نشاط في الأسبوع (إنتاج أو حضور أو جزاء)
+            var workerIds = productionByWorker.Select(g => g.Key)
+                .Concat(attendanceByWorker.Select(g => g.Key))
+                .Concat(penaltiesByWorker.Select(g => g.Key))
+                .Distinct();
 
             var summaries = new List<WorkerWeeklySummaryDto>();
-
             foreach (var workerId in workerIds)
             {
-                var workerProduction = production.Where(p => p.WorkerId == workerId).ToList();
-                var workerAttendance = attendance.Where(a => a.WorkerId == workerId).ToList();
-                var workerPenalties = penalties.Where(p => p.WorkerId == workerId).ToList();
+                var workerProduction = productionByWorker[workerId].ToList();
+                var workerAttendance = attendanceByWorker[workerId].ToList();
+                var workerPenalties = penaltiesByWorker[workerId].ToList();
 
-                // اسم العامل من أي سجل متاح (كلهم محمّلين بـ Include)
+                // اسم العامل من أي سجل متاح (كلهم محمّلين بـ Include للـ Worker)
                 var workerRef = workerProduction.FirstOrDefault()?.Worker
                     ?? workerAttendance.FirstOrDefault()?.Worker
                     ?? workerPenalties.First().Worker;
 
-                var absentWithoutPermission = workerAttendance.Count(a => a.Status == AttendanceStatus.AbsentWithoutPermission);
-
-                summaries.Add(new WorkerWeeklySummaryDto
-                {
-                    WorkerId = workerId,
-                    WorkerName = workerRef.FullName,
-                    EmployeeCode = workerRef.EmployeeCode,
-                    WeekStart = weekStart,
-                    WeekEnd = weekEnd,
-
-                    ProducedWorkdays = workerProduction.Sum(p => p.WorkdaysCompleted),
-                    TotalPieces = workerProduction.Sum(p => p.PieceCount),
-                    // تفصيل الإنتاج مجمّع حسب المرحلة (نفس المرحلة ممكن تتكرر في كذا يوم خلال الأسبوع)
-                    Breakdown = workerProduction
-                        .GroupBy(p => p.ProductionStageId)
-                        .Select(g => new StageBreakdownDto
-                        {
-                            ProductName = g.First().ProductionStage.Product.Name,
-                            StageName = g.First().ProductionStage.StageName,
-                            PieceCount = g.Sum(p => p.PieceCount),
-                            PiecesPerWorkday = g.First().PiecesPerWorkdayAtEntry
-                        })
-                        .ToList(),
-
-                    PresentDays = workerAttendance.Count(a => a.Status == AttendanceStatus.Present),
-                    AbsentWithPermissionDays = workerAttendance.Count(a => a.Status == AttendanceStatus.AbsentWithPermission),
-                    AbsentWithoutPermissionDays = absentWithoutPermission,
-                    // قاعدة الخصم المتفق عليها: نص يومية عن كل يوم غياب بدون إذن
-                    AbsenceDeduction = absentWithoutPermission * UnexcusedAbsenceDeductionPerDay,
-
-                    Penalties = workerPenalties.Select(p => new PenaltySummaryDto
-                    {
-                        PenaltyId = p.Id,
-                        Date = p.Date,
-                        Reason = p.Reason,
-                        Deduction = p.Deduction
-                    }).ToList(),
-                    PenaltyDeduction = workerPenalties.Sum(p => p.DeductedWorkdays)
-                });
+                summaries.Add(BuildWorkerSummary(
+                    workerId, workerRef, weekStart, weekEnd,
+                    workerProduction, workerAttendance, workerPenalties));
             }
 
             // الترتيب بصافي اليوميات (بعد كل الخصومات) — ده أساس تقييم الأسبوع
@@ -140,41 +175,52 @@ namespace WorkforceManager.Business.Services
             return ordered;
         }
 
-        /// <summary>
-        /// الملخص الأسبوعي لعامل واحد بس (لبروفايله وتقريره الفردي).
-        /// بيرجع null لو العامل مالوش أي نشاط في الأسبوع ده.
-        /// </summary>
-        public async Task<WorkerWeeklySummaryDto?> GetWorkerWeeklySummaryAsync(int workerId, DateTime anyDateInWeek)
+        /// <summary>يبني ملخص عامل واحد من سجلاته المُفلترة لأسبوع معين</summary>
+        private static WorkerWeeklySummaryDto BuildWorkerSummary(
+            int workerId, Worker workerRef, DateTime weekStart, DateTime weekEnd,
+            List<DailyProduction> workerProduction,
+            List<Attendance> workerAttendance,
+            List<Penalty> workerPenalties)
         {
-            var team = await GetTeamWeeklySummaryAsync(anyDateInWeek);
-            return team.FirstOrDefault(s => s.WorkerId == workerId);
-        }
+            var absentWithoutPermission = workerAttendance.Count(a => a.Status == AttendanceStatus.AbsentWithoutPermission);
 
-        /// <summary>
-        /// الهستوري الأسبوعي الكامل لعامل: ملخص كل أسبوع من تاريخ بدايته
-        /// (أو من أول سجل ليه) لحد النهاردة — ده اللي بيظهر في بروفايل
-        /// العامل كسجل تاريخي، والقديم كله محفوظ لأنه بيتحسب من السجلات الدائمة.
-        /// </summary>
-        public async Task<List<WorkerWeeklySummaryDto>> GetWorkerWeeklyHistoryAsync(int workerId, DateTime from, DateTime to)
-        {
-            var history = new List<WorkerWeeklySummaryDto>();
-
-            // نمشي أسبوع بأسبوع من بداية أسبوع "from" لحد الأسبوع اللي فيه "to"
-            var (cursor, _) = GetWorkWeekRange(from);
-            var (lastWeekStart, _) = GetWorkWeekRange(to);
-
-            while (cursor <= lastWeekStart)
+            return new WorkerWeeklySummaryDto
             {
-                var summary = await GetWorkerWeeklySummaryAsync(workerId, cursor);
-                if (summary is not null)
-                    history.Add(summary);
+                WorkerId = workerId,
+                WorkerName = workerRef.FullName,
+                EmployeeCode = workerRef.EmployeeCode,
+                WeekStart = weekStart,
+                WeekEnd = weekEnd,
 
-                cursor = cursor.AddDays(7);
-            }
+                ProducedWorkdays = workerProduction.Sum(p => p.WorkdaysCompleted),
+                TotalPieces = workerProduction.Sum(p => p.PieceCount),
+                // تفصيل الإنتاج مجمّع حسب المرحلة (نفس المرحلة ممكن تتكرر في كذا يوم خلال الأسبوع)
+                Breakdown = workerProduction
+                    .GroupBy(p => p.ProductionStageId)
+                    .Select(g => new StageBreakdownDto
+                    {
+                        ProductName = g.First().ProductionStage.Product.Name,
+                        StageName = g.First().ProductionStage.StageName,
+                        PieceCount = g.Sum(p => p.PieceCount),
+                        PiecesPerWorkday = g.First().PiecesPerWorkdayAtEntry
+                    })
+                    .ToList(),
 
-            // الأحدث الأول — أول حاجة المدير عايز يشوفها هي آخر أسبوع
-            history.Reverse();
-            return history;
+                PresentDays = workerAttendance.Count(a => a.Status == AttendanceStatus.Present),
+                AbsentWithPermissionDays = workerAttendance.Count(a => a.Status == AttendanceStatus.AbsentWithPermission),
+                AbsentWithoutPermissionDays = absentWithoutPermission,
+                // قاعدة الخصم المتفق عليها: نص يومية عن كل يوم غياب بدون إذن
+                AbsenceDeduction = absentWithoutPermission * UnexcusedAbsenceDeductionPerDay,
+
+                Penalties = workerPenalties.Select(p => new PenaltySummaryDto
+                {
+                    PenaltyId = p.Id,
+                    Date = p.Date,
+                    Reason = p.Reason,
+                    Deduction = p.Deduction
+                }).ToList(),
+                PenaltyDeduction = workerPenalties.Sum(p => p.DeductedWorkdays)
+            };
         }
     }
 }
