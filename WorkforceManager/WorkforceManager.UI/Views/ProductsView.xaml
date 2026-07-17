@@ -1,0 +1,195 @@
+<UserControl x:Class="WorkforceManager.UI.Views.ProductsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="650" d:DesignWidth="1100">
+
+    <!-- شاشة المنتجات: شريط أدوات فوق + قائمة المنتجات + لوحة مراحل المنتج المحدد -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- شريط الأدوات -->
+        <Border Grid.Row="0" Background="#F2F4F8" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" Content="＋ إضافة منتج جديد"
+                        Command="{Binding AddProductCommand}"
+                        Background="#1F3864" Foreground="White" Padding="14,8" BorderThickness="0"
+                        FontWeight="Bold" Cursor="Hand" />
+
+                <CheckBox DockPanel.Dock="Left" Content="إظهار الموقوف"
+                          IsChecked="{Binding ShowInactive}"
+                          VerticalAlignment="Center" Margin="16,0" />
+
+                <!-- البحث الفوري: باسم المنتج أو كوده أو اسم أي مرحلة فيه -->
+                <TextBox VerticalAlignment="Center" Padding="8,6" FontSize="14"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="480" />
+            </Grid.ColumnDefinitions>
+
+            <!-- قائمة المنتجات -->
+            <DataGrid Grid.Column="0"
+                      ItemsSource="{Binding Products}"
+                      SelectedItem="{Binding SelectedProduct}"
+                      AutoGenerateColumns="False" IsReadOnly="True"
+                      SelectionMode="Single" GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column" CanUserAddRows="False"
+                      FontSize="13" RowHeight="34" BorderThickness="1" BorderBrush="#DDD">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="اسم المنتج" Binding="{Binding Name}" Width="*" />
+                    <DataGridTextColumn Header="الكود" Binding="{Binding ProductCode}" Width="80" />
+                    <DataGridTextColumn Header="المراحل" Binding="{Binding StagesCountText}" Width="90" />
+                    <DataGridTextColumn Header="الحالة" Binding="{Binding StatusText}" Width="70" />
+                </DataGrid.Columns>
+                <!-- المنتج الموقوف بيظهر باهت بخط مائل -->
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                <Setter Property="Foreground" Value="#999" />
+                                <Setter Property="FontStyle" Value="Italic" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
+            </DataGrid>
+
+            <!-- لوحة مراحل المنتج المحدد -->
+            <Border Grid.Column="1" Background="#FAFBFD" BorderBrush="#DDD" BorderThickness="1"
+                    CornerRadius="6" Margin="8,0,0,0" Padding="12">
+                <Grid>
+                    <!-- رسالة لما مفيش منتج محدد -->
+                    <TextBlock Text="اختار منتج من القائمة لعرض مراحله"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="#999" FontSize="14">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedProduct}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedProduct}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- رأس المنتج + أزرار الإدارة -->
+                        <StackPanel Grid.Row="0">
+                            <TextBlock Text="{Binding SelectedProduct.Name}" FontSize="17" FontWeight="Bold"
+                                       Foreground="#1F3864" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding SelectedProduct.Description}" FontSize="12" Foreground="#666"
+                                       TextWrapping="Wrap" Margin="0,2,0,0" />
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,10">
+                                <Button Content="✏ تعديل" Command="{Binding EditProductCommand}"
+                                        Padding="10,5" Margin="0,0,6,0" Cursor="Hand" />
+                                <Button Padding="10,5" Margin="0,0,6,0" Cursor="Hand"
+                                        Command="{Binding ToggleProductActiveCommand}">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Content" Value="🗑 إيقاف المنتج" />
+                                            <Setter Property="Foreground" Value="#B00020" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedProduct.IsActive}" Value="False">
+                                                    <Setter Property="Content" Value="↩ إعادة تفعيل" />
+                                                    <Setter Property="Foreground" Value="#0B6E4F" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="＋ إضافة مرحلة" Command="{Binding AddStageCommand}"
+                                        Background="#0B6E4F" Foreground="White" BorderThickness="0"
+                                        FontWeight="Bold" Padding="10,5" Cursor="Hand" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="1" Text="مراحل التصنيع (بكوتة اليومية لكل مرحلة)"
+                                   FontWeight="Bold" Margin="0,0,0,4" />
+
+                        <!-- جدول المراحل -->
+                        <DataGrid Grid.Row="2"
+                                  ItemsSource="{Binding Stages}"
+                                  AutoGenerateColumns="False" IsReadOnly="True"
+                                  SelectionMode="Single" GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column" CanUserAddRows="False"
+                                  FontSize="13" RowHeight="34" BorderThickness="1" BorderBrush="#DDD">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#" Binding="{Binding SortOrder}" Width="40" />
+                                <DataGridTextColumn Header="المرحلة" Binding="{Binding StageName}" Width="*" />
+                                <DataGridTextColumn Header="كوتة اليومية" Binding="{Binding PiecesPerWorkday}" Width="95" />
+                                <DataGridTextColumn Header="الحالة" Binding="{Binding StatusText}" Width="65" />
+                                <!-- أزرار تعديل/إيقاف لكل مرحلة -->
+                                <DataGridTemplateColumn Header="" Width="110">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Content="✏" FontSize="12" Padding="6,2" Margin="0,0,4,0" Cursor="Hand"
+                                                        ToolTip="تعديل المرحلة"
+                                                        Command="{Binding DataContext.EditStageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" />
+                                                <Button FontSize="12" Padding="6,2" Cursor="Hand"
+                                                        Command="{Binding DataContext.ToggleStageActiveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Content" Value="🗑" />
+                                                            <Setter Property="ToolTip" Value="إيقاف المرحلة" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                                    <Setter Property="Content" Value="↩" />
+                                                                    <Setter Property="ToolTip" Value="إعادة تفعيل" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                            <!-- المرحلة الموقوفة باهتة بخط مائل -->
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                            <Setter Property="Foreground" Value="#999" />
+                                            <Setter Property="FontStyle" Value="Italic" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

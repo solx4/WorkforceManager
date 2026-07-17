@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using WorkforceManager.UI.Views;
 
@@ -31,8 +30,7 @@ namespace WorkforceManager.UI
         private void NavProducts_Checked(object sender, RoutedEventArgs e)
         {
             if (MainContent is null) return;
-            // TODO (مرحلة قادمة): شاشة المنتجات والمراحل
-            MainContent.Content = Placeholder("شاشة المنتجات والمراحل — قيد الإنشاء");
+            MainContent.Content = App.AppHost.Services.GetRequiredService<ProductsView>();
         }
 
         private void NavDailyEntry_Checked(object sender, RoutedEventArgs e)
@@ -46,14 +44,5 @@ namespace WorkforceManager.UI
             if (MainContent is null) return;
             MainContent.Content = App.AppHost.Services.GetRequiredService<ReportsView>();
         }
-
-        /// <summary>نص مؤقت للشاشات اللي لسه ما اتبنتش</summary>
-        private static TextBlock Placeholder(string text) => new()
-        {
-            Text = text,
-            FontSize = 20,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
     }
 }

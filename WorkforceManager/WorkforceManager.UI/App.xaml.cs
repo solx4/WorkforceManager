@@ -52,6 +52,7 @@ namespace WorkforceManager.UI
                     services.AddScoped<PenaltyService>();
                     services.AddScoped<WeeklySummaryService>();
                     services.AddScoped<WorkerManagementService>();
+                    services.AddScoped<ProductManagementService>();
                     // خدمة التصدير Singleton لأنها بدون حالة ولا بتلمس قاعدة البيانات
                     services.AddSingleton<WeeklyReportExcelService>();
 
@@ -64,6 +65,8 @@ namespace WorkforceManager.UI
                     services.AddTransient<ViewModels.DailyEntryViewModel>();
                     services.AddTransient<Views.ReportsView>();
                     services.AddTransient<ViewModels.ReportsViewModel>();
+                    services.AddTransient<Views.ProductsView>();
+                    services.AddTransient<ViewModels.ProductsViewModel>();
                 })
                 .Build();
         }
