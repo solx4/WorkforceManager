@@ -64,9 +64,12 @@ Core  <----------------------- UI
   are linked yet), attendance grid (upsert per worker/date), and penalties (add with reason/deduction,
   list + delete for the day). `ReportsView` is implemented: daily evaluation tab (colored ratings vs team
   average) + weekly sheet tab (net-workdays ranking, week navigation, Excel export via
-  `WeeklyReportExcelService`/ClosedXML in Business). Only ProductsView is still a placeholder in
-  `MainWindow`. Navigation uses `Checked` (not `Click`) on the sidebar radios — handlers guard against
-  the initial `Checked` that fires during `InitializeComponent` before `MainContent` exists. ViewModels take `IServiceScopeFactory` and create a scope per operation
+  `WeeklyReportExcelService`/ClosedXML in Business). `ProductsView` is implemented: products list with
+  search/inactive filter, stages panel per product with quota management (`ProductManagementService` —
+  stage names unique per product, quota edits only affect future entries thanks to the snapshot).
+  All four sidebar screens are implemented. Navigation uses `Checked` (not `Click`) on the sidebar
+  radios — handlers guard against the initial `Checked` that fires during `InitializeComponent` before
+  `MainContent` exists. ViewModels take `IServiceScopeFactory` and create a scope per operation
   (keeps DbContext short-lived). Gotcha: WPF implicit styles don't apply to derived types, so the
   `TargetType="Window"` style in App.xaml does NOT hit `MainWindow` — set `FlowDirection="RightToLeft"`
   explicitly on each window.
