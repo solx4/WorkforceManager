@@ -1,0 +1,156 @@
+<UserControl x:Class="WorkforceManager.UI.Views.ReportsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="650" d:DesignWidth="1100">
+
+    <!-- شاشة التقارير: تبويبين — تقييم اليوم + كشف الأسبوع (مع تصدير Excel) -->
+    <TabControl BorderThickness="1" BorderBrush="#DDD">
+
+        <!-- ============ تبويب تقييم اليوم ============ -->
+        <TabItem Header="  تقييم اليوم  ">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- اختيار اليوم + سطر الملخص -->
+                <Border Grid.Row="0" Background="#F2F4F8" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="اليوم:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <DatePicker SelectedDate="{Binding DailyDate}" Width="160" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding DailySummaryText}" Foreground="#1F3864" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="20,0,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- جدول التقييم اليومي -->
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding DailyRows}"
+                          AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          RowHeight="36" FontSize="13" BorderThickness="1" BorderBrush="#DDD">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="اسم العامل" Binding="{Binding WorkerName}" Width="*" />
+                        <DataGridTextColumn Header="القطع" Binding="{Binding TotalPieces}" Width="70" />
+                        <DataGridTextColumn Header="اليوميات" Binding="{Binding TotalWorkdays}" Width="80" />
+                        <DataGridTextColumn Header="مقارنة بالمتوسط" Binding="{Binding PercentText}" Width="110" />
+                        <!-- التقييم بلونه المميز (اللون جاي جاهز من الـ ViewModel) -->
+                        <DataGridTemplateColumn Header="التقييم" Width="140">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding RatingText}" Foreground="{Binding RatingColor}"
+                                               FontWeight="Bold" VerticalAlignment="Center" Margin="4,0" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="الحضور" Binding="{Binding AttendanceText}" Width="100" />
+                        <DataGridTextColumn Header="اشتغل على" Binding="{Binding BreakdownText}" Width="2*" />
+                        <DataGridTextColumn Header="جزاءات اليوم" Binding="{Binding PenaltiesText}" Width="150" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </TabItem>
+
+        <!-- ============ تبويب كشف الأسبوع ============ -->
+        <TabItem Header="  كشف الأسبوع  ">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- شريط التنقل بين الأسابيع + التصدير -->
+                <Border Grid.Row="0" Background="#F2F4F8" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                            <Button Content="◀ الأسبوع السابق" Command="{Binding PreviousWeekCommand}"
+                                    Padding="10,6" Margin="0,0,6,0" Cursor="Hand" />
+                            <Button Content="الأسبوع الحالي" Command="{Binding CurrentWeekCommand}"
+                                    Padding="10,6" Margin="0,0,6,0" Cursor="Hand" />
+                            <Button Content="الأسبوع التالي ▶" Command="{Binding NextWeekCommand}"
+                                    Padding="10,6" Cursor="Hand" />
+                        </StackPanel>
+
+                        <Button DockPanel.Dock="Left" Content="📊 تصدير Excel"
+                                Command="{Binding ExportWeekCommand}"
+                                Background="#0B6E4F" Foreground="White" Padding="14,7"
+                                BorderThickness="0" FontWeight="Bold" Margin="16,0,0,0" Cursor="Hand" />
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="16,0,0,0">
+                            <TextBlock Text="{Binding WeekTitle}" FontWeight="Bold" Foreground="#1F3864"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding WeekBadge}" Foreground="#0B6E4F" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" Margin="8,0,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- جدول كشف الأسبوع (مرتّب بالصافي) -->
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding WeeklyRows}"
+                          SelectedItem="{Binding SelectedWeeklyRow}"
+                          AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                          SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          RowHeight="36" FontSize="13" BorderThickness="1" BorderBrush="#DDD">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="40" />
+                        <DataGridTextColumn Header="⭐" Binding="{Binding BestMark}" Width="36" />
+                        <DataGridTextColumn Header="اسم العامل" Binding="{Binding WorkerName}" Width="*" />
+                        <DataGridTextColumn Header="الكود" Binding="{Binding EmployeeCode}" Width="65" />
+                        <DataGridTextColumn Header="أنتج" Binding="{Binding ProducedWorkdays}" Width="65" />
+                        <DataGridTextColumn Header="القطع" Binding="{Binding TotalPieces}" Width="75" />
+                        <DataGridTextColumn Header="حضور" Binding="{Binding PresentDays}" Width="60" />
+                        <DataGridTextColumn Header="غياب بإذن" Binding="{Binding AbsentWithPermissionDays}" Width="80" />
+                        <DataGridTextColumn Header="بدون إذن" Binding="{Binding AbsentWithoutPermissionDays}" Width="75" />
+                        <DataGridTextColumn Header="خصم غياب" Binding="{Binding AbsenceDeduction}" Width="80" />
+                        <DataGridTextColumn Header="خصم جزاءات" Binding="{Binding PenaltyDeduction}" Width="90" />
+                        <!-- الصافي بالخط العريض وبلونه (أحمر لو سالب) -->
+                        <DataGridTemplateColumn Header="الصافي" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding NetWorkdays}" Foreground="{Binding NetColor}"
+                                               FontWeight="Bold" VerticalAlignment="Center" Margin="4,0" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- لوحة تفاصيل العامل المحدد في الكشف -->
+                <Border Grid.Row="2" Background="#FAFBFD" BorderBrush="#DDD" BorderThickness="1"
+                        CornerRadius="6" Padding="10" Margin="0,8,0,0" MinHeight="70"
+                        DataContext="{Binding SelectedWeeklyRow}">
+                    <StackPanel>
+                        <TextBlock FontWeight="Bold" Foreground="#1F3864">
+                            <Run Text="{Binding BestMark, Mode=OneWay}" />
+                            <Run Text="{Binding WorkerName, Mode=OneWay}" />
+                            <Run Text=" — تفاصيل الأسبوع" />
+                        </TextBlock>
+                        <TextBlock FontSize="12.5" Foreground="#444" TextWrapping="Wrap" Margin="0,4,0,0">
+                            <Run Text="الإنتاج: " FontWeight="SemiBold" />
+                            <Run Text="{Binding BreakdownText, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock FontSize="12.5" Foreground="#B00020" TextWrapping="Wrap" Margin="0,3,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasPenalties}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                            <Run Text="الجزاءات: " FontWeight="SemiBold" />
+                            <Run Text="{Binding PenaltiesText, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </TabItem>
+    </TabControl>
+</UserControl>

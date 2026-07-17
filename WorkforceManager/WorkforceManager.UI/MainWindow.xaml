@@ -22,14 +22,15 @@
                            Foreground="White" FontSize="18" FontWeight="Bold"
                            Margin="16,0,16,24" TextAlignment="Right" />
 
+                <!-- التنقل بـ Checked (مش Click) عشان يشتغل مع الكيبورد وأدوات الوصول برضه -->
                 <RadioButton Content="العمال والمهارات" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8" IsChecked="True" Click="NavWorkers_Click" />
+                             Foreground="White" Margin="16,8" IsChecked="True" Checked="NavWorkers_Checked" />
                 <RadioButton Content="المنتجات والمراحل" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8" Click="NavProducts_Click" />
+                             Foreground="White" Margin="16,8" Checked="NavProducts_Checked" />
                 <RadioButton Content="تسجيل الإنتاج اليومي" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8" Click="NavDailyEntry_Click" />
+                             Foreground="White" Margin="16,8" Checked="NavDailyEntry_Checked" />
                 <RadioButton Content="التقارير والتقييم" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8" Click="NavReports_Click" />
+                             Foreground="White" Margin="16,8" Checked="NavReports_Checked" />
             </StackPanel>
         </Border>
 
