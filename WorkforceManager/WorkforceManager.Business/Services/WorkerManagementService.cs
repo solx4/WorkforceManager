@@ -7,8 +7,8 @@ namespace WorkforceManager.Business.Services
     /// <summary>
     /// مسؤولة عن كل عمليات "الكتابة" على العمال: إضافة عامل جديد، تعديل
     /// بياناته، إيقافه (Soft Delete)، إعادة تفعيله، وإدارة مهاراته
-    /// (ربطه/فك ربطه بمراحل الإنتاج). منفصلة عن WorkerProfileService
-    /// (اللي للقراءة والعرض بس) عشان كل خدمة تفضل بمسؤولية واحدة واضحة.
+    /// (ربطه/فك ربطه بمراحل الإنتاج) — القراءة والعرض مسؤولية الاستعلامات
+    /// في IWorkerRepository مباشرة.
     /// </summary>
     public class WorkerManagementService
     {
