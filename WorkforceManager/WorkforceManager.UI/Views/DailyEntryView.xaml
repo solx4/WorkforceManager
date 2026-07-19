@@ -24,253 +24,301 @@
 
         <TabControl Grid.Row="1" BorderThickness="1" BorderBrush="#DDD">
 
-            <!-- ============ تبويب رحلة الإنتاج ============ -->
+            <!-- ============ تبويب رحلات الإنتاج (منتج أو أكتر في نفس اليوم) ============ -->
             <TabItem Header="  تسجيل الإنتاج  ">
                 <Grid Margin="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="400" />
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-                    <!-- عمود المراحل: بطاقة لكل مرحلة بترتيب خط الإنتاج -->
-                    <Grid Grid.Column="0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
+                    <!-- شريط إضافة منتج تاني للشغل عليه -->
+                    <Border Grid.Row="0" Background="#F2F4F8" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Left" Content="＋ إضافة منتج للعمل عليه"
+                                    Command="{Binding AddFlowSessionCommand}"
+                                    Background="#0B6E4F" Foreground="White" Padding="14,7"
+                                    BorderThickness="0" FontWeight="Bold" Cursor="Hand" />
+                            <TextBlock Text="ممكن تشتغل على أكتر من منتج في نفس اليوم — كل منتج برحلته الكاملة (مراحل وعمال ونطاقات) وحفظه المستقل"
+                                       Foreground="#666" FontSize="12" VerticalAlignment="Center" Margin="14,0,0,0"
+                                       TextWrapping="Wrap" />
+                        </DockPanel>
+                    </Border>
 
-                        <!-- اختيار المنتج -->
-                        <Border Grid.Row="0" Background="#F2F4F8" CornerRadius="6" Padding="10" Margin="0,0,0,8">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="المنتج:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedProduct}"
-                                          DisplayMemberPath="Name" Width="200" />
-                                <TextBlock Text="وزّع عامل أو أكتر على كل مرحلة هتشتغل النهارده"
-                                           Foreground="#666" FontSize="12" VerticalAlignment="Center" Margin="14,0,0,0" />
-                            </StackPanel>
-                        </Border>
+                    <!-- رحلة لكل منتج، تحت بعض -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding FlowSessions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- بطاقة رحلة منتج واحد -->
+                                    <Border Background="White" BorderBrush="#C7D0E0" BorderThickness="1.5"
+                                            CornerRadius="10" Padding="12" Margin="0,0,4,12">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
 
-                        <!-- تحذيرات لحظية (تداخل نطاقات / توزيع مش مظبوط) قبل الحفظ -->
-                        <TextBlock Grid.Row="1" Text="{Binding FlowWarning}"
-                                   Foreground="#B7791F" FontSize="12.5" FontWeight="SemiBold"
-                                   TextWrapping="Wrap" Margin="4,0,4,6">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding FlowWarning}" Value="">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                                            <!-- رأس الرحلة: اختيار المنتج + إزالة الرحلة -->
+                                            <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                                                <TextBlock DockPanel.Dock="Left" Text="المنتج:" FontWeight="Bold"
+                                                           VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding Products}"
+                                                          SelectedItem="{Binding SelectedProduct}"
+                                                          DisplayMemberPath="Name" Width="200" />
+                                                <Button DockPanel.Dock="Right" Content="✕ إزالة المنتج" FontSize="12" Padding="8,4"
+                                                        Background="Transparent" BorderThickness="0" Foreground="#B00020" Cursor="Hand"
+                                                        ToolTip="إزالة رحلة المنتج ده من الشاشة (اللي اتحفظ قبل كده محفوظ عادي)"
+                                                        Command="{Binding DataContext.RemoveFlowSessionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" />
+                                                <TextBlock Text="وزّع عامل أو أكتر على كل مرحلة هتشتغل النهارده"
+                                                           Foreground="#666" FontSize="12" VerticalAlignment="Center" Margin="14,0,0,0" />
+                                            </DockPanel>
 
-                        <!-- بطاقات المراحل -->
-                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding FlowStages}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="White" BorderBrush="#DDD" BorderThickness="1"
-                                                CornerRadius="8" Padding="10,8" Margin="0,0,4,6">
-                                            <StackPanel>
-                                                <!-- رأس البطاقة: رقم الترتيب + الاسم + الكوتة + إنتاج المرحلة المحسوب -->
-                                                <DockPanel>
-                                                    <Border DockPanel.Dock="Left" Background="#1F3864" CornerRadius="12"
-                                                            Width="24" Height="24" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding DisplayOrder}" Foreground="White" FontSize="12"
-                                                                   FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                    </Border>
+                                            <Grid Grid.Row="1">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="380" />
+                                                </Grid.ColumnDefinitions>
 
-                                                    <!-- بادج إنتاج المرحلة (بيظهر بس لما المرحلة تدخل في نطاق) -->
-                                                    <Border DockPanel.Dock="Right" Background="#E8F2EC" CornerRadius="4"
-                                                            Padding="8,3" VerticalAlignment="Center">
-                                                        <Border.Style>
-                                                            <Style TargetType="Border">
+                                                <!-- عمود المراحل -->
+                                                <Grid Grid.Column="0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- رسالة لما لسه مفيش منتج مختار للرحلة دي -->
+                                                    <TextBlock Grid.Row="0" Text="اختار المنتج من فوق عشان مراحله تظهر هنا"
+                                                               Foreground="#999" FontSize="13" Margin="4,10">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding ComputedPieces}" Value="0">
+                                                                    <DataTrigger Binding="{Binding SelectedProduct}" Value="{x:Null}">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+
+                                                    <!-- تحذيرات لحظية (تداخل نطاقات / توزيع مش مظبوط) قبل الحفظ -->
+                                                    <TextBlock Grid.Row="0" Text="{Binding FlowWarning}"
+                                                               Foreground="#B7791F" FontSize="12.5" FontWeight="SemiBold"
+                                                               TextWrapping="Wrap" Margin="4,0,4,6">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding FlowWarning}" Value="">
                                                                         <Setter Property="Visibility" Value="Collapsed" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
-                                                        </Border.Style>
-                                                        <TextBlock Text="{Binding ComputedPieces, StringFormat='الإنتاج: {0} قطعة'}"
-                                                                   Foreground="#0B6E4F" FontWeight="Bold" FontSize="12.5" />
-                                                    </Border>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
 
-                                                    <TextBlock Text="{Binding StageName}" FontWeight="Bold" FontSize="14"
-                                                               VerticalAlignment="Center" Margin="8,0,0,0" />
-                                                    <TextBlock Text="{Binding QuotaText}" Foreground="#666" FontSize="11.5"
-                                                               VerticalAlignment="Center" Margin="10,0,0,0" />
-                                                    <TextBlock Text="{Binding AlreadyText}" Foreground="#B7791F" FontSize="11.5"
-                                                               VerticalAlignment="Center" Margin="10,0,0,0" />
-                                                </DockPanel>
+                                                    <!-- بطاقات المراحل -->
+                                                    <ItemsControl Grid.Row="1" ItemsSource="{Binding FlowStages}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border Background="#FDFDFE" BorderBrush="#DDD" BorderThickness="1"
+                                                                        CornerRadius="8" Padding="10,8" Margin="0,0,4,6">
+                                                                    <StackPanel>
+                                                                        <!-- رأس البطاقة: رقم الترتيب + الاسم + الكوتة + إنتاج المرحلة المحسوب -->
+                                                                        <DockPanel>
+                                                                            <Border DockPanel.Dock="Left" Background="#1F3864" CornerRadius="12"
+                                                                                    Width="24" Height="24" VerticalAlignment="Center">
+                                                                                <TextBlock Text="{Binding DisplayOrder}" Foreground="White" FontSize="12"
+                                                                                           FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                            </Border>
 
-                                                <!-- العمال المتوزعين على المرحلة (Chips بنصيب كل واحد) -->
-                                                <ItemsControl ItemsSource="{Binding AssignedWorkers}" Margin="0,6,0,0">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <WrapPanel />
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Border Background="#E8EDF7" CornerRadius="4" Padding="6,3" Margin="0,2,4,2">
-                                                                <StackPanel Orientation="Horizontal">
-                                                                    <Button Content="✕" FontSize="10" Padding="3,0" Cursor="Hand"
-                                                                            Background="Transparent" BorderThickness="0" Foreground="#B00020"
-                                                                            ToolTip="إزالة العامل من المرحلة"
-                                                                            Command="{Binding DataContext.RemoveWorkerShareCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                            CommandParameter="{Binding}" />
-                                                                    <TextBlock Text="{Binding WorkerName}" FontSize="12.5"
-                                                                               VerticalAlignment="Center" Margin="4,0,6,0" />
-                                                                    <!-- نصيب العامل: بيتملى تلقائي بالتساوي وينفع يتعدل يدوي -->
-                                                                    <TextBox Text="{Binding SharePieces, UpdateSourceTrigger=PropertyChanged}"
-                                                                             Width="55" FontSize="12.5" Padding="4,1"
-                                                                             VerticalContentAlignment="Center"
-                                                                             ToolTip="عدد القطع لهذا العامل (اتوزع تلقائيًا — عدّله لو التوزيع مش بالتساوي)" />
-                                                                </StackPanel>
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
+                                                                            <!-- بادج إنتاج المرحلة (بيظهر بس لما المرحلة تدخل في نطاق) -->
+                                                                            <Border DockPanel.Dock="Right" Background="#E8F2EC" CornerRadius="4"
+                                                                                    Padding="8,3" VerticalAlignment="Center">
+                                                                                <Border.Style>
+                                                                                    <Style TargetType="Border">
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding ComputedPieces}" Value="0">
+                                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Border.Style>
+                                                                                <TextBlock Text="{Binding ComputedPieces, StringFormat='الإنتاج: {0} قطعة'}"
+                                                                                           Foreground="#0B6E4F" FontWeight="Bold" FontSize="12.5" />
+                                                                            </Border>
 
-                                                <!-- إضافة عامل للمرحلة (المؤهلين بس) -->
-                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                    <StackPanel.Style>
-                                                        <Style TargetType="StackPanel">
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding HasNoQualified}" Value="True">
-                                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </StackPanel.Style>
-                                                    <ComboBox ItemsSource="{Binding QualifiedWorkers}"
-                                                              SelectedItem="{Binding SelectedWorkerToAdd}"
-                                                              DisplayMemberPath="Name" Width="180" FontSize="12.5" />
-                                                    <Button Content="＋ عامل" Padding="8,3" Margin="6,0,0,0" FontSize="12.5" Cursor="Hand"
-                                                            Command="{Binding DataContext.AddWorkerToStageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                            CommandParameter="{Binding}" />
-                                                </StackPanel>
+                                                                            <TextBlock Text="{Binding StageName}" FontWeight="Bold" FontSize="14"
+                                                                                       VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                                            <TextBlock Text="{Binding QuotaText}" Foreground="#666" FontSize="11.5"
+                                                                                       VerticalAlignment="Center" Margin="10,0,0,0" />
+                                                                            <TextBlock Text="{Binding AlreadyText}" Foreground="#B7791F" FontSize="11.5"
+                                                                                       VerticalAlignment="Center" Margin="10,0,0,0" />
+                                                                        </DockPanel>
 
-                                                <!-- مفيش مؤهلين: المرحلة محتاجة ربط مهارات الأول (قرار: المؤهلين بس إجباري) -->
-                                                <TextBlock Text="لا يوجد عمال مؤهلون لهذه المرحلة — اربط المهارة من شاشة العمال الأول"
-                                                           Foreground="#B00020" FontSize="12" Margin="0,4,0,0">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Visibility" Value="Collapsed" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding HasNoQualified}" Value="True">
-                                                                    <Setter Property="Visibility" Value="Visible" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </Grid>
+                                                                        <!-- العمال المتوزعين على المرحلة (Chips بنصيب كل واحد) -->
+                                                                        <ItemsControl ItemsSource="{Binding AssignedWorkers}" Margin="0,6,0,0">
+                                                                            <ItemsControl.ItemsPanel>
+                                                                                <ItemsPanelTemplate>
+                                                                                    <WrapPanel />
+                                                                                </ItemsPanelTemplate>
+                                                                            </ItemsControl.ItemsPanel>
+                                                                            <ItemsControl.ItemTemplate>
+                                                                                <DataTemplate>
+                                                                                    <Border Background="#E8EDF7" CornerRadius="4" Padding="6,3" Margin="0,2,4,2">
+                                                                                        <StackPanel Orientation="Horizontal">
+                                                                                            <!-- أمر الإزالة على الشريحة نفسها (callback للرحلة) -->
+                                                                                            <Button Content="✕" FontSize="10" Padding="3,0" Cursor="Hand"
+                                                                                                    Background="Transparent" BorderThickness="0" Foreground="#B00020"
+                                                                                                    ToolTip="إزالة العامل من المرحلة"
+                                                                                                    Command="{Binding RemoveCommand}" />
+                                                                                            <TextBlock Text="{Binding WorkerName}" FontSize="12.5"
+                                                                                                       VerticalAlignment="Center" Margin="4,0,6,0" />
+                                                                                            <!-- نصيب العامل: بيتملى تلقائي بالتساوي وينفع يتعدل يدوي -->
+                                                                                            <TextBox Text="{Binding SharePieces, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                     Width="55" FontSize="12.5" Padding="4,1"
+                                                                                                     VerticalContentAlignment="Center"
+                                                                                                     ToolTip="عدد القطع لهذا العامل (اتوزع تلقائيًا — عدّله لو التوزيع مش بالتساوي)" />
+                                                                                        </StackPanel>
+                                                                                    </Border>
+                                                                                </DataTemplate>
+                                                                            </ItemsControl.ItemTemplate>
+                                                                        </ItemsControl>
 
-                    <!-- عمود توزيع الإنتاج + المعاينة + الحفظ -->
-                    <Border Grid.Column="1" Background="#FAFBFD" BorderBrush="#DDD" BorderThickness="1"
-                            CornerRadius="6" Margin="8,0,0,0" Padding="12">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                                                                        <!-- إضافة عامل للمرحلة (المؤهلين بس) -->
+                                                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                                            <StackPanel.Style>
+                                                                                <Style TargetType="StackPanel">
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding HasNoQualified}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </StackPanel.Style>
+                                                                            <ComboBox ItemsSource="{Binding QualifiedWorkers}"
+                                                                                      SelectedItem="{Binding SelectedWorkerToAdd}"
+                                                                                      DisplayMemberPath="Name" Width="180" FontSize="12.5" />
+                                                                            <!-- أمر الإضافة على البطاقة نفسها (callback للرحلة) -->
+                                                                            <Button Content="＋ عامل" Padding="8,3" Margin="6,0,0,0" FontSize="12.5" Cursor="Hand"
+                                                                                    Command="{Binding AddWorkerCommand}" />
+                                                                        </StackPanel>
 
-                            <TextBlock Grid.Row="0" Text="توزيع الإنتاج على المراحل" FontWeight="Bold"
-                                       FontSize="14" Foreground="#1F3864" />
-                            <TextBlock Grid.Row="1" Foreground="#666" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,8"
-                                       Text="اكتب: من أنهي مرحلة لأنهي مرحلة اتنتج كام قطعة. النطاق الجاهز بيغطي كل المراحل — عدّله أو ضيف نطاقات تانية لو الإنتاج وقف عند مرحلة معينة." />
+                                                                        <!-- مفيش مؤهلين: المرحلة محتاجة ربط مهارات الأول (قرار: المؤهلين بس إجباري) -->
+                                                                        <TextBlock Text="لا يوجد عمال مؤهلون لهذه المرحلة — اربط المهارة من شاشة العمال الأول"
+                                                                                   Foreground="#B00020" FontSize="12" Margin="0,4,0,0">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding HasNoQualified}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Grid>
 
-                            <!-- نطاقات الإنتاج -->
-                            <ItemsControl Grid.Row="2" ItemsSource="{Binding FlowRanges}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1"
-                                                CornerRadius="6" Padding="8,6" Margin="0,0,0,6">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="من" VerticalAlignment="Center" FontSize="12.5" Margin="0,0,4,0" />
-                                                    <ComboBox ItemsSource="{Binding StageOptions}" SelectedItem="{Binding FromStage}"
-                                                              DisplayMemberPath="Display" Width="130" FontSize="12" />
-                                                    <TextBlock Text="إلى" VerticalAlignment="Center" FontSize="12.5" Margin="8,0,4,0" />
-                                                    <ComboBox ItemsSource="{Binding StageOptions}" SelectedItem="{Binding ToStage}"
-                                                              DisplayMemberPath="Display" Width="130" FontSize="12" />
-                                                </StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                                    <TextBlock Text="عدد القطع:" VerticalAlignment="Center" FontSize="12.5" Margin="0,0,6,0" />
-                                                    <TextBox Text="{Binding PiecesText, UpdateSourceTrigger=PropertyChanged}"
-                                                             Width="90" Padding="6,3" FontSize="13" VerticalContentAlignment="Center" />
-                                                    <Button Content="🗑" FontSize="12" Padding="6,2" Margin="10,0,0,0" Cursor="Hand"
-                                                            Background="Transparent" BorderThickness="0" Foreground="#B00020"
-                                                            ToolTip="حذف النطاق"
-                                                            Command="{Binding DataContext.RemoveRangeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                            CommandParameter="{Binding}" />
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                                <!-- عمود توزيع الإنتاج + المعاينة + الحفظ (خاص بالرحلة دي) -->
+                                                <Border Grid.Column="1" Background="#FAFBFD" BorderBrush="#DDD" BorderThickness="1"
+                                                        CornerRadius="6" Margin="8,0,0,0" Padding="12">
+                                                    <StackPanel>
+                                                        <TextBlock Text="توزيع الإنتاج على المراحل" FontWeight="Bold"
+                                                                   FontSize="14" Foreground="#1F3864" />
+                                                        <TextBlock Foreground="#666" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,8"
+                                                                   Text="اكتب: من أنهي مرحلة لأنهي مرحلة اتنتج كام قطعة. النطاق الجاهز بيغطي كل المراحل — عدّله أو ضيف نطاقات تانية لو الإنتاج وقف عند مرحلة معينة." />
 
-                            <Button Grid.Row="3" Content="＋ إضافة نطاق تاني"
-                                    Command="{Binding AddRangeCommand}"
-                                    HorizontalAlignment="Left" Padding="10,4" FontSize="12.5" Cursor="Hand" Margin="0,0,0,10" />
+                                                        <!-- نطاقات الإنتاج -->
+                                                        <ItemsControl ItemsSource="{Binding FlowRanges}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1"
+                                                                            CornerRadius="6" Padding="8,6" Margin="0,0,0,6">
+                                                                        <StackPanel>
+                                                                            <StackPanel Orientation="Horizontal">
+                                                                                <TextBlock Text="من" VerticalAlignment="Center" FontSize="12.5" Margin="0,0,4,0" />
+                                                                                <ComboBox ItemsSource="{Binding StageOptions}" SelectedItem="{Binding FromStage}"
+                                                                                          DisplayMemberPath="Display" Width="120" FontSize="12" />
+                                                                                <TextBlock Text="إلى" VerticalAlignment="Center" FontSize="12.5" Margin="8,0,4,0" />
+                                                                                <ComboBox ItemsSource="{Binding StageOptions}" SelectedItem="{Binding ToStage}"
+                                                                                          DisplayMemberPath="Display" Width="120" FontSize="12" />
+                                                                            </StackPanel>
+                                                                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                                                <TextBlock Text="عدد القطع:" VerticalAlignment="Center" FontSize="12.5" Margin="0,0,6,0" />
+                                                                                <TextBox Text="{Binding PiecesText, UpdateSourceTrigger=PropertyChanged}"
+                                                                                         Width="90" Padding="6,3" FontSize="13" VerticalContentAlignment="Center" />
+                                                                                <!-- أمر الحذف على السطر نفسه (callback للرحلة) -->
+                                                                                <Button Content="🗑" FontSize="12" Padding="6,2" Margin="10,0,0,0" Cursor="Hand"
+                                                                                        Background="Transparent" BorderThickness="0" Foreground="#B00020"
+                                                                                        ToolTip="حذف النطاق"
+                                                                                        Command="{Binding RemoveCommand}" />
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
 
-                            <!-- معاينة اليوميات قبل الحفظ -->
-                            <Border Grid.Row="4" Background="#F2F6F3" CornerRadius="6" Padding="10" VerticalAlignment="Top">
-                                <StackPanel>
-                                    <TextBlock Text="معاينة اليوميات قبل الحفظ" FontWeight="Bold" FontSize="13"
-                                               Foreground="#0B6E4F" Margin="0,0,0,4" />
-                                    <TextBlock Text="لسه مفيش توزيع — اختار العمال واكتب أعداد النطاقات"
-                                               Foreground="#999" FontSize="12">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding FlowPreview.Count}" Value="0">
-                                                        <Setter Property="Visibility" Value="Visible" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                    <ItemsControl ItemsSource="{Binding FlowPreview}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock FontSize="12.5" Margin="0,2">
-                                                    <Run Text="• " />
-                                                    <Run Text="{Binding WorkerName, Mode=OneWay}" FontWeight="SemiBold" />
-                                                    <Run Text="{Binding TotalPieces, Mode=OneWay, StringFormat=': {0} قطعة'}" />
-                                                    <Run Text="{Binding TotalWorkdays, Mode=OneWay, StringFormat='≈ {0} يومية'}"
-                                                         Foreground="#0B6E4F" FontWeight="Bold" />
-                                                </TextBlock>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </Border>
+                                                        <Button Content="＋ إضافة نطاق تاني"
+                                                                Command="{Binding AddRangeCommand}"
+                                                                HorizontalAlignment="Left" Padding="10,4" FontSize="12.5" Cursor="Hand" Margin="0,0,0,10" />
 
-                            <!-- حفظ الرحلة كلها -->
-                            <Button Grid.Row="5" Content="💾 حفظ رحلة الإنتاج"
-                                    Command="{Binding SaveFlowCommand}"
-                                    Background="#1F3864" Foreground="White" Padding="18,10"
-                                    BorderThickness="0" FontWeight="Bold" FontSize="14"
-                                    Cursor="Hand" Margin="0,10,0,0" />
-                        </Grid>
-                    </Border>
+                                                        <!-- معاينة اليوميات قبل الحفظ -->
+                                                        <Border Background="#F2F6F3" CornerRadius="6" Padding="10">
+                                                            <StackPanel>
+                                                                <TextBlock Text="معاينة اليوميات قبل الحفظ" FontWeight="Bold" FontSize="13"
+                                                                           Foreground="#0B6E4F" Margin="0,0,0,4" />
+                                                                <TextBlock Text="لسه مفيش توزيع — اختار العمال واكتب أعداد النطاقات"
+                                                                           Foreground="#999" FontSize="12">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding FlowPreview.Count}" Value="0">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                                <ItemsControl ItemsSource="{Binding FlowPreview}">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <TextBlock FontSize="12.5" Margin="0,2">
+                                                                                <Run Text="• " />
+                                                                                <Run Text="{Binding WorkerName, Mode=OneWay}" FontWeight="SemiBold" />
+                                                                                <Run Text="{Binding TotalPieces, Mode=OneWay, StringFormat=': {0} قطعة'}" />
+                                                                                <Run Text="{Binding TotalWorkdays, Mode=OneWay, StringFormat='≈ {0} يومية'}"
+                                                                                     Foreground="#0B6E4F" FontWeight="Bold" />
+                                                                            </TextBlock>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </StackPanel>
+                                                        </Border>
+
+                                                        <!-- حفظ رحلة المنتج ده -->
+                                                        <Button Content="💾 حفظ رحلة الإنتاج"
+                                                                Command="{Binding SaveFlowCommand}"
+                                                                Background="#1F3864" Foreground="White" Padding="18,10"
+                                                                BorderThickness="0" FontWeight="Bold" FontSize="14"
+                                                                Cursor="Hand" Margin="0,10,0,0" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </Grid>
             </TabItem>
 
