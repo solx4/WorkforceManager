@@ -60,9 +60,10 @@ Core  <----------------------- UI
   repositories/services/views get registered. `WorkersView` (+ `WorkersViewModel`, `WorkerEditDialog`) is
   implemented: workers grid with current-week stats, unified name/skill search, profile panel with skills
   management and weekly history, add/edit/soft-delete. `DailyEntryView` is implemented: one shared date +
-  3 tabs — batch production entry per stage (qualified workers, falls back to all actives when no skills
-  are linked yet), attendance grid (upsert per worker/date), and penalties (add with reason/deduction,
-  list + delete for the day). `ReportsView` is implemented: daily evaluation tab (colored ratings vs team
+  3 tabs — production-flow entry (pick product → its stages as ordered cards; assign qualified-only
+  workers per stage, multiple allowed with equal auto-split + manual override; production entered as
+  stage ranges "from stage X to Y: N pieces" with live per-worker workdays preview), attendance grid
+  (upsert per worker/date), and penalties (add with reason/deduction, list + delete for the day). `ReportsView` is implemented: daily evaluation tab (colored ratings vs team
   average) + weekly sheet tab (net-workdays ranking, week navigation, Excel export via
   `WeeklyReportExcelService`/ClosedXML in Business). `ProductsView` is implemented: products list with
   search/inactive filter, stages panel per product with quota management (`ProductManagementService` —
@@ -96,8 +97,13 @@ Core  <----------------------- UI
 
 ### Business logic notes
 
-- `WorkdayCalculationService.RecordProductionAsync` is the only place a `DailyProduction` row should be
-  created — it snapshots the stage quota automatically.
+- `DailyProduction` rows are created only by `WorkdayCalculationService` (single/batch) or
+  `ProductionFlowService.RecordFlowAsync` — both snapshot the stage quota automatically.
+- `ProductionFlowService.RecordFlowAsync` is the main production-entry path: takes stage ranges
+  ("from stage X to Y produced N pieces" — every stage in a range gets N) + per-stage worker shares.
+  Validates everything (ranges in line order, no overlaps, share sums == stage pieces, workers must be
+  qualified via `WorkerSkill`), writes all records in one SaveChanges (all-or-nothing), and auto-creates
+  a Present attendance record for participating workers who have none that day (never overwrites).
 - `PerformanceEvaluationService.EvaluateDayAsync` ranks workers for a given date against the average
   workdays of only the workers who actually produced that day (absentees aren't averaged in at zero).
   Unexcused absence (`AbsentWithoutPermission`) always ranks worst regardless of any production; excused
