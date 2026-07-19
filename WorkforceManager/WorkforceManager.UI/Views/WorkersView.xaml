@@ -15,12 +15,11 @@
         </Grid.RowDefinitions>
 
         <!-- شريط الأدوات: بحث موحّد + إظهار الموقوفين + زرار الإضافة -->
-        <Border Grid.Row="0" Background="#F2F4F8" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+        <Border Grid.Row="0" Style="{StaticResource ToolbarCard}">
             <DockPanel>
                 <Button DockPanel.Dock="Left" Content="＋ إضافة عامل جديد"
                         Command="{Binding AddWorkerCommand}"
-                        Background="#1F3864" Foreground="White" Padding="14,8" BorderThickness="0"
-                        FontWeight="Bold" Cursor="Hand" />
+                        Style="{StaticResource PrimaryButton}" />
 
                 <CheckBox DockPanel.Dock="Left" Content="إظهار الموقوفين"
                           IsChecked="{Binding ShowInactive}"
@@ -28,7 +27,7 @@
 
                 <Button DockPanel.Dock="Right" Content="🔍 بحث"
                         Command="{Binding SearchCommand}"
-                        Padding="14,8" Margin="8,0,0,0" Cursor="Hand" />
+                        Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
 
                 <!-- البحث الموحّد: بالاسم أو بالمهارة/المرحلة — Enter بينفذ البحث مباشرة -->
                 <TextBox VerticalAlignment="Center" Padding="8,6" FontSize="14"
@@ -51,13 +50,12 @@
             </Grid.ColumnDefinitions>
 
             <!-- جدول العمال بإحصائيات الأسبوع الحالي -->
-            <DataGrid Grid.Column="0"
-                      ItemsSource="{Binding Workers}"
+            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="6">
+            <DataGrid ItemsSource="{Binding Workers}"
                       SelectedItem="{Binding SelectedWorker}"
+                      Style="{StaticResource ModernDataGrid}"
                       AutoGenerateColumns="False" IsReadOnly="True"
-                      SelectionMode="Single" GridLinesVisibility="Horizontal"
-                      HeadersVisibility="Column" CanUserAddRows="False"
-                      FontSize="13" RowHeight="34" BorderThickness="1" BorderBrush="#DDD">
+                      SelectionMode="Single">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="⭐" Binding="{Binding BestMark}" Width="36" />
                     <DataGridTextColumn Header="اسم العامل" Binding="{Binding FullName}" Width="*" />
@@ -69,9 +67,9 @@
                     <DataGridTextColumn Header="صافي اليوميات" Binding="{Binding NetWorkdays}" Width="100" />
                     <DataGridTextColumn Header="الحالة" Binding="{Binding StatusText}" Width="70" />
                 </DataGrid.Columns>
-                <!-- تمييز الصف حسب الحالة: الموقوف رمادي باهت -->
+                <!-- تمييز الصف حسب الحالة: الموقوف رمادي باهت (مبني على النمط الموحد) -->
                 <DataGrid.RowStyle>
-                    <Style TargetType="DataGridRow">
+                    <Style TargetType="DataGridRow" BasedOn="{StaticResource ModernGridRow}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsActive}" Value="False">
                                 <Setter Property="Foreground" Value="#999" />
@@ -81,10 +79,10 @@
                     </Style>
                 </DataGrid.RowStyle>
             </DataGrid>
+            </Border>
 
             <!-- لوحة التفاصيل (بروفايل العامل المحدد) -->
-            <Border Grid.Column="1" Background="#FAFBFD" BorderBrush="#DDD" BorderThickness="1"
-                    CornerRadius="6" Margin="8,0,0,0" Padding="12">
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="10,0,0,0">
                 <Grid>
                     <!-- رسالة لما مفيش عامل محدد -->
                     <TextBlock Text="اختار عامل من الجدول لعرض ملفه الكامل"
@@ -125,11 +123,10 @@
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                 <Button Content="✏ تعديل"
                                         Command="{Binding DataContext.EditWorkerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        Padding="10,5" Margin="0,0,6,0" Cursor="Hand" />
-                                <Button Padding="10,5" Cursor="Hand"
-                                        Command="{Binding DataContext.ToggleActiveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                        Style="{StaticResource GhostButton}" Margin="0,0,6,0" />
+                                <Button Command="{Binding DataContext.ToggleActiveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                     <Button.Style>
-                                        <Style TargetType="Button">
+                                        <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
                                             <Setter Property="Content" Value="🗑 إيقاف العامل" />
                                             <Setter Property="Foreground" Value="#B00020" />
                                             <Style.Triggers>
@@ -148,11 +145,11 @@
                             <ItemsControl ItemsSource="{Binding Skills}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="#E8EDF7" CornerRadius="4" Padding="6,3" Margin="0,2">
+                                        <Border Background="{StaticResource ChipBgBrush}" CornerRadius="7" Padding="7,4" Margin="0,2">
                                             <DockPanel>
                                                 <!-- زرار شيل المهارة -->
-                                                <Button DockPanel.Dock="Left" Content="✕" FontSize="10" Padding="4,0"
-                                                        Background="Transparent" BorderThickness="0" Foreground="#B00020" Cursor="Hand"
+                                                <Button DockPanel.Dock="Left" Content="✕" FontSize="10" Foreground="#B00020"
+                                                        Style="{StaticResource IconButton}"
                                                         Command="{Binding DataContext.RemoveSkillCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}" />
                                                 <TextBlock Text="{Binding Display}" FontSize="12" TextWrapping="Wrap" />
@@ -164,7 +161,7 @@
 
                             <!-- إضافة مهارة جديدة -->
                             <DockPanel Margin="0,6,0,10">
-                                <Button DockPanel.Dock="Left" Content="＋ إضافة" Padding="8,4" Cursor="Hand"
+                                <Button DockPanel.Dock="Left" Content="＋ إضافة" Style="{StaticResource GhostButton}"
                                         Command="{Binding DataContext.AddSkillCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                 <ComboBox ItemsSource="{Binding StageOptions}"
                                           SelectedItem="{Binding SelectedStageOption}"

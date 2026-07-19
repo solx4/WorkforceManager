@@ -26,9 +26,8 @@
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
             <Button Content="حفظ" Click="Save_Click" IsDefault="True"
-                    Background="#1F3864" Foreground="White" Padding="24,8"
-                    BorderThickness="0" FontWeight="Bold" Margin="0,0,8,0" Cursor="Hand" />
-            <Button Content="إلغاء" IsCancel="True" Padding="24,8" Cursor="Hand" />
+                    Style="{StaticResource PrimaryButton}" Padding="26,9" Margin="0,0,8,0" />
+            <Button Content="إلغاء" IsCancel="True" Style="{StaticResource GhostButton}" Padding="26,9" />
         </StackPanel>
     </StackPanel>
 </Window>

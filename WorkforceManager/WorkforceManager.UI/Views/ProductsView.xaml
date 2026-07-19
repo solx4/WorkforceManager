@@ -14,12 +14,11 @@
         </Grid.RowDefinitions>
 
         <!-- شريط الأدوات -->
-        <Border Grid.Row="0" Background="#F2F4F8" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+        <Border Grid.Row="0" Style="{StaticResource ToolbarCard}">
             <DockPanel>
                 <Button DockPanel.Dock="Left" Content="＋ إضافة منتج جديد"
                         Command="{Binding AddProductCommand}"
-                        Background="#1F3864" Foreground="White" Padding="14,8" BorderThickness="0"
-                        FontWeight="Bold" Cursor="Hand" />
+                        Style="{StaticResource PrimaryButton}" />
 
                 <CheckBox DockPanel.Dock="Left" Content="إظهار الموقوف"
                           IsChecked="{Binding ShowInactive}"
@@ -38,22 +37,21 @@
             </Grid.ColumnDefinitions>
 
             <!-- قائمة المنتجات -->
-            <DataGrid Grid.Column="0"
-                      ItemsSource="{Binding Products}"
+            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="6">
+            <DataGrid ItemsSource="{Binding Products}"
                       SelectedItem="{Binding SelectedProduct}"
+                      Style="{StaticResource ModernDataGrid}"
                       AutoGenerateColumns="False" IsReadOnly="True"
-                      SelectionMode="Single" GridLinesVisibility="Horizontal"
-                      HeadersVisibility="Column" CanUserAddRows="False"
-                      FontSize="13" RowHeight="34" BorderThickness="1" BorderBrush="#DDD">
+                      SelectionMode="Single">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="اسم المنتج" Binding="{Binding Name}" Width="*" />
                     <DataGridTextColumn Header="الكود" Binding="{Binding ProductCode}" Width="80" />
                     <DataGridTextColumn Header="المراحل" Binding="{Binding StagesCountText}" Width="90" />
                     <DataGridTextColumn Header="الحالة" Binding="{Binding StatusText}" Width="70" />
                 </DataGrid.Columns>
-                <!-- المنتج الموقوف بيظهر باهت بخط مائل -->
+                <!-- المنتج الموقوف بيظهر باهت بخط مائل (مبني على النمط الموحد) -->
                 <DataGrid.RowStyle>
-                    <Style TargetType="DataGridRow">
+                    <Style TargetType="DataGridRow" BasedOn="{StaticResource ModernGridRow}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsActive}" Value="False">
                                 <Setter Property="Foreground" Value="#999" />
@@ -63,10 +61,10 @@
                     </Style>
                 </DataGrid.RowStyle>
             </DataGrid>
+            </Border>
 
             <!-- لوحة مراحل المنتج المحدد -->
-            <Border Grid.Column="1" Background="#FAFBFD" BorderBrush="#DDD" BorderThickness="1"
-                    CornerRadius="6" Margin="8,0,0,0" Padding="12">
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="10,0,0,0">
                 <Grid>
                     <!-- رسالة لما مفيش منتج محدد -->
                     <TextBlock Text="اختار منتج من القائمة لعرض مراحله"
@@ -108,11 +106,11 @@
                                        TextWrapping="Wrap" Margin="0,2,0,0" />
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,10">
                                 <Button Content="✏ تعديل" Command="{Binding EditProductCommand}"
-                                        Padding="10,5" Margin="0,0,6,0" Cursor="Hand" />
-                                <Button Padding="10,5" Margin="0,0,6,0" Cursor="Hand"
+                                        Style="{StaticResource GhostButton}" Margin="0,0,6,0" />
+                                <Button Margin="0,0,6,0"
                                         Command="{Binding ToggleProductActiveCommand}">
                                     <Button.Style>
-                                        <Style TargetType="Button">
+                                        <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
                                             <Setter Property="Content" Value="🗑 إيقاف المنتج" />
                                             <Setter Property="Foreground" Value="#B00020" />
                                             <Style.Triggers>
@@ -125,8 +123,7 @@
                                     </Button.Style>
                                 </Button>
                                 <Button Content="＋ إضافة مرحلة" Command="{Binding AddStageCommand}"
-                                        Background="#0B6E4F" Foreground="White" BorderThickness="0"
-                                        FontWeight="Bold" Padding="10,5" Cursor="Hand" />
+                                        Style="{StaticResource SuccessButton}" />
                             </StackPanel>
                         </StackPanel>
 
@@ -136,10 +133,9 @@
                         <!-- جدول المراحل -->
                         <DataGrid Grid.Row="2"
                                   ItemsSource="{Binding Stages}"
+                                  Style="{StaticResource ModernDataGrid}"
                                   AutoGenerateColumns="False" IsReadOnly="True"
-                                  SelectionMode="Single" GridLinesVisibility="Horizontal"
-                                  HeadersVisibility="Column" CanUserAddRows="False"
-                                  FontSize="13" RowHeight="34" BorderThickness="1" BorderBrush="#DDD">
+                                  SelectionMode="Single">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="#" Binding="{Binding SortOrder}" Width="40" />
                                 <DataGridTextColumn Header="المرحلة" Binding="{Binding StageName}" Width="*" />
@@ -150,15 +146,15 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal">
-                                                <Button Content="✏" FontSize="12" Padding="6,2" Margin="0,0,4,0" Cursor="Hand"
-                                                        ToolTip="تعديل المرحلة"
+                                                <Button Content="✏" FontSize="12" Margin="0,0,4,0"
+                                                        Style="{StaticResource IconButton}" ToolTip="تعديل المرحلة"
                                                         Command="{Binding DataContext.EditStageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}" />
-                                                <Button FontSize="12" Padding="6,2" Cursor="Hand"
+                                                <Button FontSize="12"
                                                         Command="{Binding DataContext.ToggleStageActiveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}">
                                                     <Button.Style>
-                                                        <Style TargetType="Button">
+                                                        <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
                                                             <Setter Property="Content" Value="🗑" />
                                                             <Setter Property="ToolTip" Value="إيقاف المرحلة" />
                                                             <Style.Triggers>
@@ -175,9 +171,9 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                             </DataGrid.Columns>
-                            <!-- المرحلة الموقوفة باهتة بخط مائل -->
+                            <!-- المرحلة الموقوفة باهتة بخط مائل (مبنية على النمط الموحد) -->
                             <DataGrid.RowStyle>
-                                <Style TargetType="DataGridRow">
+                                <Style TargetType="DataGridRow" BasedOn="{StaticResource ModernGridRow}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsActive}" Value="False">
                                             <Setter Property="Foreground" Value="#999" />

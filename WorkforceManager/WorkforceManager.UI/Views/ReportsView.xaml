@@ -18,21 +18,20 @@
                 </Grid.RowDefinitions>
 
                 <!-- اختيار اليوم + سطر الملخص -->
-                <Border Grid.Row="0" Background="#F2F4F8" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                <Border Grid.Row="0" Style="{StaticResource ToolbarCard}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="اليوم:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0" />
                         <DatePicker SelectedDate="{Binding DailyDate}" Width="160" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding DailySummaryText}" Foreground="#1F3864" FontWeight="SemiBold"
+                        <TextBlock Text="{Binding DailySummaryText}" Foreground="{StaticResource BrandBrush}" FontWeight="SemiBold"
                                    VerticalAlignment="Center" Margin="20,0,0,0" />
                     </StackPanel>
                 </Border>
 
                 <!-- جدول التقييم اليومي -->
-                <DataGrid Grid.Row="1"
-                          ItemsSource="{Binding DailyRows}"
-                          AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
-                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                          RowHeight="36" FontSize="13" BorderThickness="1" BorderBrush="#DDD">
+                <Border Grid.Row="1" Style="{StaticResource Card}" Padding="6">
+                <DataGrid ItemsSource="{Binding DailyRows}"
+                          Style="{StaticResource ModernDataGrid}"
+                          AutoGenerateColumns="False" IsReadOnly="True">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="اسم العامل" Binding="{Binding WorkerName}" Width="*" />
                         <DataGridTextColumn Header="القطع" Binding="{Binding TotalPieces}" Width="70" />
@@ -52,6 +51,7 @@
                         <DataGridTextColumn Header="جزاءات اليوم" Binding="{Binding PenaltiesText}" Width="150" />
                     </DataGrid.Columns>
                 </DataGrid>
+                </Border>
             </Grid>
         </TabItem>
 
@@ -65,38 +65,37 @@
                 </Grid.RowDefinitions>
 
                 <!-- شريط التنقل بين الأسابيع + التصدير -->
-                <Border Grid.Row="0" Background="#F2F4F8" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                <Border Grid.Row="0" Style="{StaticResource ToolbarCard}">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                             <Button Content="◀ الأسبوع السابق" Command="{Binding PreviousWeekCommand}"
-                                    Padding="10,6" Margin="0,0,6,0" Cursor="Hand" />
+                                    Style="{StaticResource GhostButton}" Margin="0,0,6,0" />
                             <Button Content="الأسبوع الحالي" Command="{Binding CurrentWeekCommand}"
-                                    Padding="10,6" Margin="0,0,6,0" Cursor="Hand" />
+                                    Style="{StaticResource GhostButton}" Margin="0,0,6,0" />
                             <Button Content="الأسبوع التالي ▶" Command="{Binding NextWeekCommand}"
-                                    Padding="10,6" Cursor="Hand" />
+                                    Style="{StaticResource GhostButton}" />
                         </StackPanel>
 
                         <Button DockPanel.Dock="Left" Content="📊 تصدير Excel"
                                 Command="{Binding ExportWeekCommand}"
-                                Background="#0B6E4F" Foreground="White" Padding="14,7"
-                                BorderThickness="0" FontWeight="Bold" Margin="16,0,0,0" Cursor="Hand" />
+                                Style="{StaticResource SuccessButton}" Margin="16,0,0,0" />
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="16,0,0,0">
-                            <TextBlock Text="{Binding WeekTitle}" FontWeight="Bold" Foreground="#1F3864"
+                            <TextBlock Text="{Binding WeekTitle}" FontWeight="Bold" Foreground="{StaticResource BrandBrush}"
                                        VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding WeekBadge}" Foreground="#0B6E4F" FontWeight="SemiBold"
+                            <TextBlock Text="{Binding WeekBadge}" Foreground="{StaticResource SuccessBrush}" FontWeight="SemiBold"
                                        VerticalAlignment="Center" Margin="8,0,0,0" />
                         </StackPanel>
                     </DockPanel>
                 </Border>
 
                 <!-- جدول كشف الأسبوع (مرتّب بالصافي) -->
-                <DataGrid Grid.Row="1"
-                          ItemsSource="{Binding WeeklyRows}"
+                <Border Grid.Row="1" Style="{StaticResource Card}" Padding="6">
+                <DataGrid ItemsSource="{Binding WeeklyRows}"
                           SelectedItem="{Binding SelectedWeeklyRow}"
-                          AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
-                          SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                          RowHeight="36" FontSize="13" BorderThickness="1" BorderBrush="#DDD">
+                          Style="{StaticResource ModernDataGrid}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          SelectionMode="Single">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="40" />
                         <DataGridTextColumn Header="⭐" Binding="{Binding BestMark}" Width="36" />
@@ -120,10 +119,10 @@
                         </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
+                </Border>
 
                 <!-- لوحة تفاصيل العامل المحدد في الكشف -->
-                <Border Grid.Row="2" Background="#FAFBFD" BorderBrush="#DDD" BorderThickness="1"
-                        CornerRadius="6" Padding="10" Margin="0,8,0,0" MinHeight="70"
+                <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,10,0,0" MinHeight="70"
                         DataContext="{Binding SelectedWeeklyRow}">
                     <StackPanel>
                         <TextBlock FontWeight="Bold" Foreground="#1F3864">
