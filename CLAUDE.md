@@ -119,6 +119,13 @@ Core  <----------------------- UI
   absence is neutral (`Average`). Thresholds (`TopPerformerThreshold`, `AboveAverageThreshold`,
   `BelowAverageThreshold`) are relative percentages vs. team average, defined as constants in that service.
 - `AttendanceService.RecordAttendanceAsync` is an upsert (one record per worker/date).
+- Corrections: `WorkdayCalculationService.UpdateProductionAsync/DeleteProductionAsync` fix wrongly-saved
+  records (update keeps the quota snapshot; delete is hard, like penalties) — surfaced in DailyEntryView's
+  "سجلات اليوم" tab.
+- Backups: `DatabaseBackupService` — daily-on-startup (local `Backups/` + optional external folder from
+  `AppSettingsStore`/settings.json, external failures never block startup), `BackupNow` (manual, errors
+  loudly), `RestoreBackup` (safety-copies current db first, then overwrite + app restart). Cleanup is
+  filename-date based; `AppPaths` centralizes all file locations. UI in `SettingsView` (5th nav item).
 - `WeeklySummaryService` is the heart of weekly math. The work week runs **Thursday → Wednesday**
   (`GetWorkWeekRange`). Weekly counters are computed on the fly from `DailyProduction`/`Attendance`/
   `Penalty` records — nothing weekly is stored, so "a new week starts fresh" while all history stays
