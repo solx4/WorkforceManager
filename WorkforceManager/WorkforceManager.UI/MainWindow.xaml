@@ -1,7 +1,6 @@
 <Window x:Class="WorkforceManager.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="نظام إدارة إنتاجية وأجور العمال"
         Height="720" Width="1200"
         WindowStartupLocation="CenterScreen"
@@ -11,39 +10,86 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="248" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- القائمة الجانبية -->
-        <Border Grid.Column="0" Background="#1F3864">
-            <StackPanel Margin="0,20,0,0">
-                <TextBlock Text="إدارة الإنتاجية"
-                           Foreground="White" FontSize="18" FontWeight="Bold"
-                           Margin="16,0,16,24" TextAlignment="Right" />
+        <!-- ══════════ القائمة الجانبية ══════════ -->
+        <Border Grid.Column="0">
+            <!-- تدرج كحلي هادي من فوق لتحت — عمق من غير ما يتعب العين -->
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#24437C" Offset="0" />
+                    <GradientStop Color="#152A4E" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
 
-                <!-- التنقل بـ Checked + Click مع بعض عن قصد:
-                     - Checked: بيغطي التنقل بالكيبورد وأدوات الوصول (بيشتغل مع تغيير الاختيار)
-                     - Click: بيغطي الضغط على الشاشة المختارة أصلاً — بيعمل إعادة تحميل
-                       للبيانات (Checked مبيتنفذش تاني لو الزرار متعلم بالفعل)
-                     لما بيحصل تنقل فعلي الاتنين بينفذوا ورا بعض — تحميل مرتين خفيف
-                     ومقبول في مقابل إن التحديث يشتغل في كل الحالات -->
-                <RadioButton Content="العمال والمهارات" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8" IsChecked="True"
-                             Checked="NavWorkers_Checked" Click="NavWorkers_Checked" />
-                <RadioButton Content="المنتجات والمراحل" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8"
-                             Checked="NavProducts_Checked" Click="NavProducts_Checked" />
-                <RadioButton Content="تسجيل الإنتاج اليومي" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8"
-                             Checked="NavDailyEntry_Checked" Click="NavDailyEntry_Checked" />
-                <RadioButton Content="التقارير والتقييم" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8"
-                             Checked="NavReports_Checked" Click="NavReports_Checked" />
-            </StackPanel>
+            <DockPanel>
+                <!-- الهوية: لوجو + اسم النظام -->
+                <StackPanel DockPanel.Dock="Top" Margin="18,26,18,22">
+                    <Border Width="54" Height="54" CornerRadius="16" Background="#2EFFFFFF"
+                            HorizontalAlignment="Right">
+                        <TextBlock Text="🏭" FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="إدارة الإنتاجية" Foreground="White" FontSize="18" FontWeight="Bold"
+                               Margin="0,12,0,2" />
+                    <TextBlock Text="نظام اليوميات والأجور والتقييم" Foreground="#9FB3D1" FontSize="11.5" />
+                </StackPanel>
+
+                <!-- بطاقة اليوم في آخر القائمة -->
+                <Border DockPanel.Dock="Bottom" Margin="14,0,14,16" Padding="12,10"
+                        CornerRadius="10" Background="#1AFFFFFF">
+                    <StackPanel>
+                        <!-- التاريخ بالعربي بيتكتب من الكود عند فتح النافذة -->
+                        <TextBlock x:Name="TodayText" Foreground="White" FontSize="12.5" FontWeight="SemiBold" />
+                        <TextBlock Text="أسبوع العمل: الخميس ← الأربعاء" Foreground="#9FB3D1" FontSize="10.5"
+                                   Margin="0,3,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- عناصر التنقل -->
+                <StackPanel Margin="12,4,12,0">
+                    <!-- التنقل بـ Checked + Click مع بعض عن قصد:
+                         Checked للتنقل الفعلي والكيبورد، وClick لإعادة تحميل الشاشة
+                         المفتوحة أصلًا (Checked مبيتنفذش لو الزرار متعلم بالفعل) -->
+                    <RadioButton Style="{StaticResource NavItem}" IsChecked="True"
+                                 Checked="NavWorkers_Checked" Click="NavWorkers_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="👥" FontSize="16" VerticalAlignment="Center" />
+                            <TextBlock Text="العمال والمهارات" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton Style="{StaticResource NavItem}"
+                                 Checked="NavProducts_Checked" Click="NavProducts_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📦" FontSize="16" VerticalAlignment="Center" />
+                            <TextBlock Text="المنتجات والمراحل" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton Style="{StaticResource NavItem}"
+                                 Checked="NavDailyEntry_Checked" Click="NavDailyEntry_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📝" FontSize="16" VerticalAlignment="Center" />
+                            <TextBlock Text="تسجيل الإنتاج اليومي" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton Style="{StaticResource NavItem}"
+                                 Checked="NavReports_Checked" Click="NavReports_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📊" FontSize="16" VerticalAlignment="Center" />
+                            <TextBlock Text="التقارير والتقييم" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
-        <!-- منطقة المحتوى: كل شاشة (View) بتتحمّل هنا -->
-        <ContentControl x:Name="MainContent" Grid.Column="1" Margin="16" />
+        <!-- ══════════ منطقة المحتوى ══════════ -->
+        <Border Grid.Column="1" Background="{StaticResource PageBgBrush}">
+            <ContentControl x:Name="MainContent" Margin="18,16" />
+        </Border>
     </Grid>
 </Window>

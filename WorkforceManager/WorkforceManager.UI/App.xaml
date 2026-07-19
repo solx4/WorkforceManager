@@ -9,16 +9,265 @@
                 <!-- في MaterialDesignThemes 5.x اتغير اسم ملف الأنماط الافتراضية
                      القديمة (Material Design 2) لـ MaterialDesign2.Defaults.xaml —
                      المسار القديم "MaterialDesignTheme.Defaults.xaml" مبقاش موجود
-                     في المكتبة وبيطلع IOException. هذا الملف ضروري عشان أنماط
-                     زي MaterialDesignTabRadioButton (مستخدمة في MainWindow) -->
+                     في المكتبة وبيطلع IOException -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- خط ووجهة العرض من اليمين لليسار افتراضيًا لكل الواجهة العربية -->
+            <!-- ======================================================
+                 نظام التصميم الموحد (Design System)
+                 كل ألوان وأنماط الواجهة في مكان واحد — أي شاشة بتستخدم
+                 نفس المراجع دي، فالشكل متناسق والتعديل من نقطة واحدة
+                 ====================================================== -->
+
+            <!-- ــــــــــ لوحة الألوان ــــــــــ -->
+            <!-- الهوية: كحلي عميق + لمسة كهرمانية للتمييز -->
+            <SolidColorBrush x:Key="BrandBrush" Color="#1F3864" />
+            <SolidColorBrush x:Key="BrandDarkBrush" Color="#152A4E" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#F2A93B" />
+            <!-- الخلفيات والبطاقات -->
+            <SolidColorBrush x:Key="PageBgBrush" Color="#F4F6FB" />
+            <SolidColorBrush x:Key="CardBgBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="CardBorderBrush" Color="#E4E9F2" />
+            <SolidColorBrush x:Key="SubtleBgBrush" Color="#EEF2F9" />
+            <!-- النصوص -->
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1D2733" />
+            <SolidColorBrush x:Key="TextMutedBrush" Color="#6B7686" />
+            <!-- الحالات: نجاح / خطر / تنبيه -->
+            <SolidColorBrush x:Key="SuccessBrush" Color="#0B6E4F" />
+            <SolidColorBrush x:Key="SuccessBgBrush" Color="#E8F2EC" />
+            <SolidColorBrush x:Key="DangerBrush" Color="#B00020" />
+            <SolidColorBrush x:Key="DangerBgBrush" Color="#FDF0F2" />
+            <SolidColorBrush x:Key="WarnBrush" Color="#B7791F" />
+            <SolidColorBrush x:Key="WarnBgBrush" Color="#FFF7E8" />
+            <!-- تفاعل الجداول والشرائح -->
+            <SolidColorBrush x:Key="HoverBgBrush" Color="#EFF3FA" />
+            <SolidColorBrush x:Key="SelectionBgBrush" Color="#E3EDFB" />
+            <SolidColorBrush x:Key="ChipBgBrush" Color="#E8EDF7" />
+            <SolidColorBrush x:Key="GridLineBrush" Color="#EEF1F6" />
+
+            <!-- ــــــــــ الإطار العام للنوافذ ــــــــــ -->
             <Style TargetType="{x:Type Window}">
                 <Setter Property="FlowDirection" Value="RightToLeft" />
                 <Setter Property="FontFamily" Value="Segoe UI" />
                 <Setter Property="FontSize" Value="14" />
+                <Setter Property="Background" Value="{StaticResource PageBgBrush}" />
+            </Style>
+
+            <!-- ــــــــــ البطاقات ــــــــــ -->
+            <!-- بطاقة محتوى بيضاء بحواف ناعمة — الوحدة الأساسية لأي لوحة في الشاشات -->
+            <Style x:Key="Card" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource CardBgBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="14" />
+            </Style>
+
+            <!-- شريط أدوات أعلى الشاشة (بحث/أزرار) -->
+            <Style x:Key="ToolbarCard" TargetType="Border" BasedOn="{StaticResource Card}">
+                <Setter Property="Padding" Value="12,10" />
+                <Setter Property="Margin" Value="0,0,0,10" />
+            </Style>
+
+            <!-- ــــــــــ الأزرار ــــــــــ -->
+            <!-- الأساس المشترك: حواف دائرية + تفاعل ناعم عند المرور والضغط -->
+            <Style x:Key="BaseActionButton" TargetType="Button">
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="FontSize" Value="13.5" />
+                <Setter Property="Padding" Value="16,9" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="9" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.88" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.75" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- الزر الرئيسي (كحلي) — الفعل الأساسي في أي شاشة -->
+            <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource BaseActionButton}">
+                <Setter Property="Background" Value="{StaticResource BrandBrush}" />
+            </Style>
+
+            <!-- زر النجاح (أخضر) — إضافة/تصدير -->
+            <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource BaseActionButton}">
+                <Setter Property="Background" Value="{StaticResource SuccessBrush}" />
+            </Style>
+
+            <!-- زر الخطر (أحمر) — جزاءات وما شابه -->
+            <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource BaseActionButton}">
+                <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+            </Style>
+
+            <!-- زر هادي بإطار — أفعال ثانوية (تعديل، تنقل بين أسابيع...) -->
+            <Style x:Key="GhostButton" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Padding" Value="12,7" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{StaticResource CardBgBrush}"
+                                    BorderBrush="#D5DCE8" BorderThickness="1"
+                                    CornerRadius="9" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource HoverBgBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource SelectionBgBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- زر أيقونة شفاف — ✕ و🗑 داخل الشرائح والجداول -->
+            <Style x:Key="IconButton" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Padding" Value="5,2" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="Transparent" CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource DangerBgBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ــــــــــ النصوص ــــــــــ -->
+            <Style x:Key="SectionTitle" TargetType="TextBlock">
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="FontSize" Value="14.5" />
+                <Setter Property="Foreground" Value="{StaticResource BrandBrush}" />
+            </Style>
+
+            <Style x:Key="HintText" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11.5" />
+                <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
+            <!-- ــــــــــ الجداول الحديثة ــــــــــ -->
+            <Style x:Key="ModernGridHeader" TargetType="DataGridColumnHeader">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontSize" Value="12.5" />
+                <Setter Property="Padding" Value="10,9" />
+                <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+            </Style>
+
+            <Style x:Key="ModernGridCell" TargetType="DataGridCell">
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Padding" Value="8,0" />
+                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                <Style.Triggers>
+                    <!-- التحديد بيتلون على مستوى الصف — الخلية نفسها بتفضل شفافة عشان مفيش أزرق افتراضي -->
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="ModernGridRow" TargetType="DataGridRow">
+                <Setter Property="Background" Value="Transparent" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource HoverBgBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="{StaticResource SelectionBgBrush}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- الجدول الموحد: مفيش إطار (البطاقة الأم هي الإطار)، خطوط أفقية خفيفة، صفوف مريحة -->
+            <Style x:Key="ModernDataGrid" TargetType="DataGrid">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="GridLinesVisibility" Value="Horizontal" />
+                <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource GridLineBrush}" />
+                <Setter Property="HeadersVisibility" Value="Column" />
+                <Setter Property="CanUserAddRows" Value="False" />
+                <Setter Property="RowHeight" Value="38" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="RowBackground" Value="Transparent" />
+                <Setter Property="ColumnHeaderStyle" Value="{StaticResource ModernGridHeader}" />
+                <Setter Property="CellStyle" Value="{StaticResource ModernGridCell}" />
+                <Setter Property="RowStyle" Value="{StaticResource ModernGridRow}" />
+            </Style>
+
+            <!-- ــــــــــ عناصر القائمة الجانبية ــــــــــ -->
+            <!-- عنصر تنقل: حبة دائرية بتتظلل عند المرور، وبتتميز بمؤشر كهرماني عند الاختيار -->
+            <Style x:Key="NavItem" TargetType="RadioButton">
+                <Setter Property="Foreground" Value="#C9D6EC" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Margin" Value="0,3" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Pill" CornerRadius="10" Background="Transparent">
+                                <Grid>
+                                    <!-- المؤشر الكهرماني الجانبي — علامة الشاشة المفتوحة حاليًا -->
+                                    <Border x:Name="Indicator" Width="4" CornerRadius="2"
+                                            Background="{StaticResource AccentBrush}"
+                                            HorizontalAlignment="Left" Margin="0,9"
+                                            Visibility="Collapsed" />
+                                    <ContentPresenter VerticalAlignment="Center" Margin="16,11" />
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Pill" Property="Background" Value="#14FFFFFF" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Pill" Property="Background" Value="#24FFFFFF" />
+                                    <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                                    <Setter Property="Foreground" Value="White" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
         </ResourceDictionary>
     </Application.Resources>

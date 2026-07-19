@@ -20,6 +20,11 @@ namespace WorkforceManager.UI
         public MainWindow()
         {
             InitializeComponent();
+
+            // تاريخ اليوم بالعربي في بطاقة أسفل القائمة الجانبية
+            TodayText.Text = DateTime.Today.ToString(
+                "dddd d MMMM yyyy", new System.Globalization.CultureInfo("ar-EG"));
+
             // الشاشة الافتراضية عند فتح البرنامج: شاشة العمال
             MainContent.Content = App.AppHost.Services.GetRequiredService<WorkersView>();
         }
