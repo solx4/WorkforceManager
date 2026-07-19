@@ -60,10 +60,12 @@ Core  <----------------------- UI
   repositories/services/views get registered. `WorkersView` (+ `WorkersViewModel`, `WorkerEditDialog`) is
   implemented: workers grid with current-week stats, unified name/skill search, profile panel with skills
   management and weekly history, add/edit/soft-delete. `DailyEntryView` is implemented: one shared date +
-  3 tabs — production-flow entry (pick product → its stages as ordered cards; assign qualified-only
-  workers per stage, multiple allowed with equal auto-split + manual override; production entered as
-  stage ranges "from stage X to Y: N pieces" with live per-worker workdays preview), attendance grid
-  (upsert per worker/date), and penalties (add with reason/deduction, list + delete for the day). `ReportsView` is implemented: daily evaluation tab (colored ratings vs team
+  3 tabs — production-flow entry (one or MORE products per day: each product gets its own
+  `FlowSessionViewModel` card — stages as ordered cards, qualified-only workers per stage with equal
+  auto-split + manual override, stage ranges "from stage X to Y: N pieces", live per-worker workdays
+  preview, independent save; "add product" button appends sessions; row-level commands live on the row
+  view-models via callbacks, not RelativeSource), attendance grid (upsert per worker/date), and
+  penalties (add with reason/deduction, list + delete for the day). `ReportsView` is implemented: daily evaluation tab (colored ratings vs team
   average) + weekly sheet tab (net-workdays ranking, week navigation, Excel export via
   `WeeklyReportExcelService`/ClosedXML in Business). `ProductsView` is implemented: products list with
   search/inactive filter, stages panel per product with quota management (`ProductManagementService` —
