@@ -75,5 +75,16 @@ namespace WorkforceManager.Data.Repositories
                 .OrderBy(w => w.FullName)
                 .ToListAsync();
         }
+
+        public async Task<IReadOnlyList<WorkerSkill>> GetSkillsForProductAsync(int productId)
+        {
+            // استعلام واحد بيرجع (المرحلة، العامل) لكل مراحل المنتج — بدل
+            // استعلام منفصل لكل مرحلة في شاشة رحلة الإنتاج
+            return await Context.Set<WorkerSkill>()
+                .Include(ws => ws.Worker)
+                .Where(ws => ws.ProductionStage.ProductId == productId && ws.Worker.IsActive)
+                .OrderBy(ws => ws.Worker.FullName)
+                .ToListAsync();
+        }
     }
 }

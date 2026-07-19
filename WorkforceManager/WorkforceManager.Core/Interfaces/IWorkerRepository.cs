@@ -25,5 +25,12 @@ namespace WorkforceManager.Core.Interfaces
 
         /// <summary>العمال النشطون المؤهلون لمرحلة معينة (أساس شاشة الإدخال السريع لليوميات)</summary>
         Task<IReadOnlyList<Worker>> GetQualifiedForStageAsync(int productionStageId);
+
+        /// <summary>
+        /// كل روابط المهارات (عامل ↔ مرحلة) لمراحل منتج معين، مع بيانات العامل،
+        /// للعمال النشطين فقط — استعلام واحد بيجيب المؤهلين لكل مراحل المنتج
+        /// دفعة واحدة (أساس شاشة رحلة الإنتاج: قائمة اختيار مستقلة لكل مرحلة).
+        /// </summary>
+        Task<IReadOnlyList<WorkerSkill>> GetSkillsForProductAsync(int productId);
     }
 }
