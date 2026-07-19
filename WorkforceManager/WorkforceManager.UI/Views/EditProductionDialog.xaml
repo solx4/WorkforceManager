@@ -1,0 +1,34 @@
+<Window x:Class="WorkforceManager.UI.Views.EditProductionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="تصحيح سجل إنتاج"
+        Width="420" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        FlowDirection="RightToLeft" FontSize="14" FontFamily="Segoe UI">
+
+    <!-- تصحيح عدد قطع سجل محفوظ بالغلط — الكوتة المحفوظة وقت التسجيل بتفضل زي ما هي -->
+    <StackPanel Margin="20">
+        <!-- معلومات السجل (للتأكد إنه السجل الصح قبل التعديل) -->
+        <Border Background="{StaticResource SubtleBgBrush}" CornerRadius="8" Padding="10" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock x:Name="WorkerText" FontWeight="Bold" FontSize="14" />
+                <TextBlock x:Name="StageText" Foreground="{StaticResource TextMutedBrush}" FontSize="12.5" Margin="0,2,0,0" />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Text="عدد القطع الصحيح" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBox x:Name="PiecesBox" Padding="8,6" Margin="0,0,0,6" FontSize="15" />
+        <TextBlock Text="اليوميات هتتعاد حسابها تلقائيًا بنفس كوتة وقت التسجيل"
+                   Style="{StaticResource HintText}" Margin="0,0,0,14" />
+
+        <TextBlock x:Name="ErrorText" Foreground="{StaticResource DangerBrush}" FontSize="12"
+                   Margin="0,0,0,8" Visibility="Collapsed" TextWrapping="Wrap" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+            <Button Content="حفظ التصحيح" Click="Save_Click" IsDefault="True"
+                    Style="{StaticResource PrimaryButton}" Padding="26,9" Margin="0,0,8,0" />
+            <Button Content="إلغاء" IsCancel="True" Style="{StaticResource GhostButton}" Padding="26,9" />
+        </StackPanel>
+    </StackPanel>
+</Window>

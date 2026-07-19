@@ -322,6 +322,69 @@
                 </Grid>
             </TabItem>
 
+            <!-- ============ تبويب سجلات اليوم (المراجعة والتصحيح) ============ -->
+            <TabItem Header="  سجلات اليوم  ">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Style="{StaticResource HintText}" FontSize="12.5" Margin="4,0,4,8"
+                               Text="كل سجلات الإنتاج المحفوظة في اليوم المختار — لو فيه رقم اتحفظ بالغلط صححه أو امسحه من هنا، واليوميات هتتظبط في كل الحسابات فورًا." />
+
+                    <Border Grid.Row="1" Style="{StaticResource Card}" Padding="6">
+                        <Grid>
+                            <!-- رسالة لما مفيش سجلات في اليوم -->
+                            <TextBlock Text="مفيش سجلات إنتاج محفوظة في اليوم ده"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextMutedBrush}" FontSize="14">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DayRecords.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <DataGrid ItemsSource="{Binding DayRecords}"
+                                      Style="{StaticResource ModernDataGrid}"
+                                      AutoGenerateColumns="False" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="اسم العامل" Binding="{Binding WorkerName}" Width="*" />
+                                    <DataGridTextColumn Header="المنتج / المرحلة" Binding="{Binding StageDisplay}" Width="*" />
+                                    <DataGridTextColumn Header="القطع" Binding="{Binding PieceCount}" Width="90" />
+                                    <DataGridTextColumn Header="كوتة وقتها" Binding="{Binding QuotaAtEntry}" Width="90" />
+                                    <DataGridTextColumn Header="اليوميات" Binding="{Binding Workdays}" Width="80" />
+                                    <DataGridTemplateColumn Header="" Width="120">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Content="✏ تصحيح" FontSize="12" Margin="0,0,4,0"
+                                                            Style="{StaticResource IconButton}" Foreground="{StaticResource BrandBrush}"
+                                                            ToolTip="تعديل عدد القطع"
+                                                            Command="{Binding DataContext.EditDayRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}" />
+                                                    <Button Content="🗑" FontSize="12"
+                                                            Style="{StaticResource IconButton}" Foreground="{StaticResource DangerBrush}"
+                                                            ToolTip="حذف السجل نهائيًا"
+                                                            Command="{Binding DataContext.DeleteDayRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
             <!-- ============ تبويب الحضور ============ -->
             <TabItem Header="  الحضور والغياب  ">
                 <Grid Margin="10">

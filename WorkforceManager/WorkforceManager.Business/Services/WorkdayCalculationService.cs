@@ -89,6 +89,38 @@ namespace WorkforceManager.Business.Services
             return count;
         }
 
+        /// <summary>
+        /// يصحّح عدد قطع سجل إنتاج اتحفظ بالغلط. الكوتة المحفوظة وقت
+        /// التسجيل (Snapshot) بتفضل زي ما هي — التصحيح للقطع بس،
+        /// واليوميات بتتعاد حسابها تلقائيًا (خاصية محسوبة).
+        /// </summary>
+        public async Task<DailyProduction> UpdateProductionAsync(int recordId, int newPieceCount)
+        {
+            if (newPieceCount <= 0)
+                throw new ArgumentException("عدد القطع يجب أن يكون أكبر من صفر", nameof(newPieceCount));
+
+            var record = await _productionRepo.GetByIdAsync(recordId)
+                ?? throw new InvalidOperationException("سجل الإنتاج غير موجود");
+
+            record.PieceCount = newPieceCount;
+            _productionRepo.Update(record);
+            await _productionRepo.SaveChangesAsync();
+            return record;
+        }
+
+        /// <summary>
+        /// يحذف سجل إنتاج اتسجل بالغلط — حذف فعلي (نفس قاعدة الجزاءات:
+        /// السجل الغلط ملوش قيمة تاريخية تستاهل الحفظ).
+        /// </summary>
+        public async Task DeleteProductionAsync(int recordId)
+        {
+            var record = await _productionRepo.GetByIdAsync(recordId)
+                ?? throw new InvalidOperationException("سجل الإنتاج غير موجود");
+
+            _productionRepo.Remove(record);
+            await _productionRepo.SaveChangesAsync();
+        }
+
         /// <summary>إجمالي عدد اليوميات المنجزة لعامل معين في تاريخ معين (مجموع كل المراحل التي عمل عليها)</summary>
         public async Task<decimal> GetDailyWorkdaysAsync(int workerId, DateTime date)
         {

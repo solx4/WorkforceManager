@@ -85,6 +85,7 @@ namespace WorkforceManager.UI.ViewModels
             firstSession.SelectedProduct = _products.FirstOrDefault();
             FlowSessions.Add(firstSession);
 
+            await LoadDayRecordsAsync();
             await LoadAttendanceAsync();
             await LoadPenaltiesAsync();
         }
@@ -95,17 +96,25 @@ namespace WorkforceManager.UI.ViewModels
             foreach (var session in FlowSessions)
                 await session.ReloadAsync();
 
+            await LoadDayRecordsAsync();
             await LoadAttendanceAsync();
             await LoadPenaltiesAsync();
+        }
+
+        /// <summary>بعد حفظ أي رحلة: الحضور التلقائي وسجلات اليوم بيظهروا فورًا</summary>
+        private async Task OnFlowSavedAsync()
+        {
+            await LoadAttendanceAsync();
+            await LoadDayRecordsAsync();
         }
 
         // ======================= قسم رحلات الإنتاج (منتج أو أكتر في اليوم) =======================
 
         public ObservableCollection<FlowSessionViewModel> FlowSessions { get; } = new();
 
-        /// <summary>رحلة جديدة مربوطة بيوم الشاشة وتحديث الحضور بعد حفظها</summary>
+        /// <summary>رحلة جديدة مربوطة بيوم الشاشة وتحديث الحضور والسجلات بعد حفظها</summary>
         private FlowSessionViewModel CreateSession() =>
-            new(_scopeFactory, _products, () => EntryDate, LoadAttendanceAsync);
+            new(_scopeFactory, _products, () => EntryDate, OnFlowSavedAsync);
 
         /// <summary>إضافة منتج تاني للشغل عليه في نفس اليوم (رحلة جديدة فاضية بيختار منتجها)</summary>
         [RelayCommand]
@@ -134,6 +143,80 @@ namespace WorkforceManager.UI.ViewModels
                 return;
 
             FlowSessions.Remove(session);
+        }
+
+        // ======================= قسم سجلات اليوم (التصحيح) =======================
+
+        /// <summary>كل سجلات الإنتاج المحفوظة في اليوم المختار — للمراجعة والتصحيح</summary>
+        public ObservableCollection<DayRecordRow> DayRecords { get; } = new();
+
+        private async Task LoadDayRecordsAsync()
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var productionRepo = scope.ServiceProvider.GetRequiredService<IDailyProductionRepository>();
+
+            var records = await productionRepo.GetByDateAsync(EntryDate);
+            DayRecords.Clear();
+            foreach (var r in records.OrderBy(r => r.Worker.FullName).ThenBy(r => r.Id))
+            {
+                DayRecords.Add(new DayRecordRow
+                {
+                    RecordId = r.Id,
+                    WorkerName = r.Worker.FullName,
+                    StageDisplay = $"{r.ProductionStage.Product.Name} / {r.ProductionStage.StageName}",
+                    PieceCount = r.PieceCount,
+                    QuotaAtEntry = r.PiecesPerWorkdayAtEntry,
+                    Workdays = r.WorkdaysCompleted
+                });
+            }
+        }
+
+        [RelayCommand]
+        private async Task EditDayRecordAsync(DayRecordRow? row)
+        {
+            if (row is null) return;
+
+            var dialog = new Views.EditProductionDialog { Owner = Application.Current.MainWindow };
+            dialog.LoadRecord(row.WorkerName, row.StageDisplay, row.PieceCount);
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var workdayService = scope.ServiceProvider.GetRequiredService<WorkdayCalculationService>();
+                await workdayService.UpdateProductionAsync(row.RecordId, dialog.NewPieceCount);
+
+                // إعادة تحميل كل حاجة مرتبطة باليوم — الأرقام بتتصحح في كل مكان فورًا
+                await ReloadForDateAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "خطأ في التصحيح", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        [RelayCommand]
+        private async Task DeleteDayRecordAsync(DayRecordRow? row)
+        {
+            if (row is null) return;
+
+            if (MessageBox.Show(
+                    $"حذف سجل \"{row.WorkerName}\" على {row.StageDisplay} ({row.PieceCount} قطعة)؟\nيومياته هتتخصم من حسابه فورًا.",
+                    "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var workdayService = scope.ServiceProvider.GetRequiredService<WorkdayCalculationService>();
+                await workdayService.DeleteProductionAsync(row.RecordId);
+
+                await ReloadForDateAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "خطأ في الحذف", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         // ======================= قسم الحضور =======================
@@ -298,6 +381,17 @@ namespace WorkforceManager.UI.ViewModels
 
         /// <summary>الاسم المعروض في قوائم "من/إلى": الترتيب + الاسم</summary>
         public string Display => $"{DisplayOrder}. {StageName}";
+    }
+
+    /// <summary>سجل إنتاج واحد في تبويب "سجلات اليوم" — للمراجعة والتصحيح</summary>
+    public class DayRecordRow
+    {
+        public int RecordId { get; init; }
+        public string WorkerName { get; init; } = "";
+        public string StageDisplay { get; init; } = "";
+        public int PieceCount { get; init; }
+        public int QuotaAtEntry { get; init; }
+        public decimal Workdays { get; init; }
     }
 
     /// <summary>خيار حالة حضور في القائمة المنسدلة ("—" = بدون تسجيل)</summary>
