@@ -43,6 +43,7 @@ namespace WorkforceManager.UI
                     services.AddScoped<IPenaltyRepository, PenaltyRepository>();
                     services.AddScoped<IGenericRepository<ProductionStage>, GenericRepository<ProductionStage>>();
                     services.AddScoped<IGenericRepository<WorkerSkill>, GenericRepository<WorkerSkill>>();
+                    services.AddScoped<IGenericRepository<AppUser>, GenericRepository<AppUser>>();
 
                     // Business Services
                     services.AddScoped<WorkdayCalculationService>();
@@ -54,6 +55,7 @@ namespace WorkforceManager.UI
                     services.AddScoped<WorkerManagementService>();
                     services.AddScoped<ProductManagementService>();
                     services.AddScoped<ProductionFlowService>();
+                    services.AddScoped<AuthService>();
                     // خدمة التصدير Singleton لأنها بدون حالة ولا بتلمس قاعدة البيانات
                     services.AddSingleton<WeeklyReportExcelService>();
 
@@ -103,9 +105,24 @@ namespace WorkforceManager.UI
                     // غير ما نمسح بياناته
                     await db.Database.MigrateAsync();
                     await DatabaseSeeder.SeedIfEmptyAsync(db);
+
+                    // أول تشغيل: إنشاء حساب الدخول الافتراضي لو مفيش مستخدمين
+                    await scope.ServiceProvider.GetRequiredService<AuthService>().EnsureDefaultUserAsync();
+                }
+
+                // شاشة الدخول الأول — من غير دخول ناجح البرنامج مش بيفتح.
+                // أثناء شاشة الدخول بنمنع الإغلاق التلقائي (مفيش نافذة رئيسية لسه)
+                ShutdownMode = ShutdownMode.OnExplicitShutdown;
+                var login = new Views.LoginWindow();
+                if (login.ShowDialog() != true)
+                {
+                    Shutdown();
+                    return;
                 }
 
                 var mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
+                MainWindow = mainWindow;
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
                 mainWindow.Show();
 
                 base.OnStartup(e);
