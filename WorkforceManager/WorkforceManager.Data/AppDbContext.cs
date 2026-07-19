@@ -77,6 +77,20 @@ namespace WorkforceManager.Data
                 .HasForeignKey(p => p.WorkerId)
                 .OnDelete(DeleteBehavior.Cascade); // نفس قاعدة الحضور: حذف عامل (نادر) يحذف جزاءاته
 
+            // ---------- فهارس التاريخ ----------
+            // كل استعلامات اليوم والأسبوع (شاشة التسجيل، التقارير، الملخص الأسبوعي)
+            // بتفلتر بالتاريخ الأول — الفهارس المركّبة الموجودة بادئة بـ WorkerId
+            // فمش بتخدم الاستعلامات دي، ومن غير فهرس Date كل استعلام بيلف على
+            // الجدول كله (هيبان بطؤه مع تراكم شهور من البيانات)
+            modelBuilder.Entity<DailyProduction>()
+                .HasIndex(dp => dp.Date);
+
+            modelBuilder.Entity<Attendance>()
+                .HasIndex(a => a.Date);
+
+            modelBuilder.Entity<Penalty>()
+                .HasIndex(p => p.Date);
+
             // ---------- AppUser: اسم المستخدم فريد (مفيش حسابين بنفس الاسم) ----------
             modelBuilder.Entity<AppUser>()
                 .HasIndex(u => u.Username)
