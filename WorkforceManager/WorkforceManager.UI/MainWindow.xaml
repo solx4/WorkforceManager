@@ -22,15 +22,24 @@
                            Foreground="White" FontSize="18" FontWeight="Bold"
                            Margin="16,0,16,24" TextAlignment="Right" />
 
-                <!-- التنقل بـ Checked (مش Click) عشان يشتغل مع الكيبورد وأدوات الوصول برضه -->
+                <!-- التنقل بـ Checked + Click مع بعض عن قصد:
+                     - Checked: بيغطي التنقل بالكيبورد وأدوات الوصول (بيشتغل مع تغيير الاختيار)
+                     - Click: بيغطي الضغط على الشاشة المختارة أصلاً — بيعمل إعادة تحميل
+                       للبيانات (Checked مبيتنفذش تاني لو الزرار متعلم بالفعل)
+                     لما بيحصل تنقل فعلي الاتنين بينفذوا ورا بعض — تحميل مرتين خفيف
+                     ومقبول في مقابل إن التحديث يشتغل في كل الحالات -->
                 <RadioButton Content="العمال والمهارات" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8" IsChecked="True" Checked="NavWorkers_Checked" />
+                             Foreground="White" Margin="16,8" IsChecked="True"
+                             Checked="NavWorkers_Checked" Click="NavWorkers_Checked" />
                 <RadioButton Content="المنتجات والمراحل" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8" Checked="NavProducts_Checked" />
+                             Foreground="White" Margin="16,8"
+                             Checked="NavProducts_Checked" Click="NavProducts_Checked" />
                 <RadioButton Content="تسجيل الإنتاج اليومي" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8" Checked="NavDailyEntry_Checked" />
+                             Foreground="White" Margin="16,8"
+                             Checked="NavDailyEntry_Checked" Click="NavDailyEntry_Checked" />
                 <RadioButton Content="التقارير والتقييم" Style="{StaticResource MaterialDesignTabRadioButton}"
-                             Foreground="White" Margin="16,8" Checked="NavReports_Checked" />
+                             Foreground="White" Margin="16,8"
+                             Checked="NavReports_Checked" Click="NavReports_Checked" />
             </StackPanel>
         </Border>
 
