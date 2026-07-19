@@ -49,8 +49,8 @@ namespace WorkforceManager.UI.ViewModels
 
         partial void OnEntryDateChanged(DateTime value)
         {
-            // تغيير اليوم بيعيد تحميل كل حاجة مرتبطة بيه
-            _ = ReloadForDateAsync();
+            // تغيير اليوم بيعيد تحميل كل حاجة مرتبطة بيه (وأي خطأ بيظهر مش بيضيع بصمت)
+            SafeAsync.Run(ReloadForDateAsync);
         }
 
         /// <summary>أول تحميل للشاشة: المنتجات + أول رحلة + الحضور + الجزاءات</summary>
@@ -275,14 +275,23 @@ namespace WorkforceManager.UI.ViewModels
                 return;
             }
 
-            using var scope = _scopeFactory.CreateScope();
-            var attendanceService = scope.ServiceProvider.GetRequiredService<AttendanceService>();
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var attendanceService = scope.ServiceProvider.GetRequiredService<AttendanceService>();
 
-            // حفظ جماعي في حفظة واحدة بدل استعلام + حفظ لكل عامل
-            var saved = await attendanceService.RecordAttendanceBatchAsync(EntryDate, toSave);
+                // حفظ جماعي في حفظة واحدة بدل استعلام + حفظ لكل عامل
+                var saved = await attendanceService.RecordAttendanceBatchAsync(EntryDate, toSave);
 
-            MessageBox.Show($"تم حفظ حضور {saved} عامل بتاريخ {EntryDate:yyyy/MM/dd}",
-                "تم الحفظ", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"تم حفظ حضور {saved} عامل بتاريخ {EntryDate:yyyy/MM/dd}",
+                    "تم الحفظ", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // قاعدة الحماية: غياب لعامل له إنتاج في نفس اليوم بيترفض برسالة بأسماء العمال
+                MessageBox.Show(ex.Message, "تعارض في البيانات", MessageBoxButton.OK, MessageBoxImage.Warning);
+                await LoadAttendanceAsync(); // إرجاع القائمة للحالة المحفوظة الفعلية
+            }
         }
 
         // ======================= قسم الجزاءات =======================

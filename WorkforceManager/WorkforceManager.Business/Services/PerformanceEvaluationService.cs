@@ -102,6 +102,14 @@ namespace WorkforceManager.Business.Services
 
             if (worker.TotalPieces == 0) return PerformanceRating.Average;
 
+            // حالة المنتج الوحيد (قرار متفق عليه): مفيش زملاء يتقارن بيهم،
+            // فالنسبة للمتوسط دايمًا صفر والمقارنة مستحيلة رياضيًا — بنستخدم
+            // معيار موضوعي بداله: حقق يومية كاملة أو أكتر = الأفضل النهارده
+            if (producingWorkers.Count == 1)
+                return worker.TotalWorkdays >= 1.0m
+                    ? PerformanceRating.TopPerformer
+                    : PerformanceRating.Average;
+
             var isTop = producingWorkers.Count > 0 && producingWorkers.All(w => w.TotalWorkdays <= worker.TotalWorkdays);
 
             if (isTop && worker.PercentVsAverage >= TopPerformerThreshold) return PerformanceRating.TopPerformer;
