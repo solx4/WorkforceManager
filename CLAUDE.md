@@ -53,8 +53,9 @@ Core  <----------------------- UI
   database (all relationships/cascade rules configured in `OnModelCreating`); `Repositories/` implement
   the Core interfaces; nothing outside this project talks to `AppDbContext` directly.
 - **WorkforceManager.Business** — all business rules live here, nowhere else (especially not in UI code):
-  `WorkdayCalculationService`, `PerformanceEvaluationService`, `AttendanceService`, `WorkerProfileService`,
-  plus their DTOs in `DTOs/`.
+  `WorkdayCalculationService`, `PerformanceEvaluationService`, `AttendanceService`, `ProductionFlowService`,
+  `WeeklySummaryService`, `PenaltyService`, `WorkerManagementService`, `ProductManagementService`,
+  `AuthService`, `WeeklyReportExcelService`, plus their DTOs in `DTOs/`.
 - **WorkforceManager.UI** — WPF, MVVM (CommunityToolkit.Mvvm) + MaterialDesignThemes. `App.xaml.cs` wires
   up DI via `Microsoft.Extensions.Hosting`'s `Host` (`AppHost`) — this is the single place new
   repositories/services/views get registered. `WorkersView` (+ `WorkersViewModel`, `WorkerEditDialog`) is
@@ -118,7 +119,15 @@ Core  <----------------------- UI
   Unexcused absence (`AbsentWithoutPermission`) always ranks worst regardless of any production; excused
   absence is neutral (`Average`). Thresholds (`TopPerformerThreshold`, `AboveAverageThreshold`,
   `BelowAverageThreshold`) are relative percentages vs. team average, defined as constants in that service.
-- `AttendanceService.RecordAttendanceAsync` is an upsert (one record per worker/date).
+- `AttendanceService.RecordAttendanceAsync` is an upsert (one record per worker/date). Recording an
+  absence for a worker who has production that day is REJECTED (single and batch — batch is
+  all-or-nothing, names the conflicting workers). Delete the production first if truly absent.
+- Daily evaluation: a sole producer gets `TopPerformer` iff `TotalWorkdays >= 1.0` (objective bar —
+  percent-vs-average is meaningless with no peers), else `Average`.
+- UI hygiene: never use `_ = SomeAsync()` — use `SafeAsync.Run(...)` (ViewModels) so failures surface
+  instead of vanishing (Dispatcher handler doesn't see unobserved task exceptions). App enforces a
+  single instance via a named Mutex in `App.OnStartup`. Date-leading indexes exist on
+  DailyProductions/Attendances/Penalties for all by-date/by-week queries.
 - Corrections: `WorkdayCalculationService.UpdateProductionAsync/DeleteProductionAsync` fix wrongly-saved
   records (update keeps the quota snapshot; delete is hard, like penalties) — surfaced in DailyEntryView's
   "سجلات اليوم" tab.
