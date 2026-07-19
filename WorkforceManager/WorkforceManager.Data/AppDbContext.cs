@@ -19,6 +19,7 @@ namespace WorkforceManager.Data
         public DbSet<DailyProduction> DailyProductions => Set<DailyProduction>();
         public DbSet<Attendance> Attendances => Set<Attendance>();
         public DbSet<Penalty> Penalties => Set<Penalty>();
+        public DbSet<AppUser> AppUsers => Set<AppUser>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -75,6 +76,11 @@ namespace WorkforceManager.Data
                 .WithMany(w => w.Penalties)
                 .HasForeignKey(p => p.WorkerId)
                 .OnDelete(DeleteBehavior.Cascade); // نفس قاعدة الحضور: حذف عامل (نادر) يحذف جزاءاته
+
+            // ---------- AppUser: اسم المستخدم فريد (مفيش حسابين بنفس الاسم) ----------
+            modelBuilder.Entity<AppUser>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
 
             // ---------- فهارس لتسريع البحث بالاسم ----------
             modelBuilder.Entity<Worker>()
