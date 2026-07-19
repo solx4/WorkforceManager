@@ -28,11 +28,12 @@ namespace WorkforceManager.UI.ViewModels
             _scopeFactory = scopeFactory;
         }
 
-        /// <summary>أول تحميل للشاشة: تقرير النهارده + كشف الأسبوع الحالي</summary>
+        /// <summary>أول تحميل للشاشة: تقرير النهارده + كشف الأسبوع الحالي + رسم المنتجات</summary>
         public async Task InitializeAsync()
         {
             await LoadDailyAsync();
             await LoadWeeklyAsync();
+            await LoadChartAsync();
         }
 
         // ======================= تبويب تقييم اليوم =======================
@@ -135,6 +136,100 @@ namespace WorkforceManager.UI.ViewModels
             return LoadWeeklyAsync();
         }
 
+        // ======================= تبويب رسم إنتاج المنتجات =======================
+
+        /// <summary>خيارات مدة الرسم (بالأسابيع، منتهية بالأسبوع الحالي)</summary>
+        public List<int> ChartWeeksOptions { get; } = new() { 4, 8, 12, 24 };
+
+        [ObservableProperty]
+        private int _selectedChartWeeks = 8;
+
+        partial void OnSelectedChartWeeksChanged(int value)
+        {
+            SafeAsync.Run(LoadChartAsync);
+        }
+
+        /// <summary>أعمدة الرسم مجمعة بالأسبوع (بالترتيب الزمني)</summary>
+        public ObservableCollection<ChartWeekGroup> ChartWeekGroups { get; } = new();
+
+        /// <summary>مفتاح الألوان: منتج → لون + إجمالي الفترة</summary>
+        public ObservableCollection<ChartLegendItem> ChartLegend { get; } = new();
+
+        [ObservableProperty]
+        private bool _chartHasData;
+
+        /// <summary>لوحة ألوان السلاسل — كل منتج بياخد لون ثابت طول الرسمة</summary>
+        private static readonly string[] ChartPalette =
+        {
+            "#1F3864", "#0B6E4F", "#B7791F", "#7A3B8F",
+            "#B00020", "#0F7B8A", "#C2563B", "#5B6B7C"
+        };
+
+        /// <summary>أقصى ارتفاع للعمود بالبكسل — الباقي بيتحسب نسبيًا عليه</summary>
+        private const double MaxBarHeight = 190;
+
+        private async Task LoadChartAsync()
+        {
+            List<ProductWeeklyPointDto> points;
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var chartService = scope.ServiceProvider.GetRequiredService<ProductionChartService>();
+                var to = DateTime.Today;
+                var from = to.AddDays(-7 * (SelectedChartWeeks - 1));
+                points = await chartService.GetProductWeeklyCompletedAsync(from, to);
+            }
+
+            // المنتجات اللي ليها إنتاج مكتمل في الفترة — الأكتر إنتاجًا الأول، ولون ثابت لكل منتج
+            var productTotals = points
+                .GroupBy(p => (p.ProductId, p.ProductName))
+                .Select(g => (g.Key.ProductId, g.Key.ProductName, Total: g.Sum(x => x.CompletedPieces)))
+                .OrderByDescending(x => x.Total)
+                .ToList();
+
+            var colorByProduct = productTotals
+                .Select((p, i) => (p.ProductId, Color: ChartPalette[i % ChartPalette.Length]))
+                .ToDictionary(x => x.ProductId, x => x.Color);
+
+            ChartLegend.Clear();
+            foreach (var p in productTotals)
+            {
+                ChartLegend.Add(new ChartLegendItem
+                {
+                    Color = colorByProduct[p.ProductId],
+                    ProductName = p.ProductName,
+                    TotalText = $"{p.Total:N0} قطعة"
+                });
+            }
+
+            // كل أسابيع الفترة بالترتيب الزمني (حتى الفاضية — محور الزمن لازم يكون متصل)
+            var (firstWeekStart, _) = WeeklySummaryService.GetWorkWeekRange(DateTime.Today.AddDays(-7 * (SelectedChartWeeks - 1)));
+            var pointsByWeek = points.ToLookup(p => p.WeekStart);
+            var maxPieces = points.Count == 0 ? 1 : points.Max(p => p.CompletedPieces);
+
+            ChartWeekGroups.Clear();
+            for (var week = firstWeekStart; week <= DateTime.Today; week = week.AddDays(7))
+            {
+                var weekPoints = pointsByWeek[week]
+                    .OrderBy(p => productTotals.FindIndex(t => t.ProductId == p.ProductId))
+                    .ToList();
+
+                ChartWeekGroups.Add(new ChartWeekGroup
+                {
+                    WeekLabel = $"{week:dd/MM}",
+                    TotalText = weekPoints.Count == 0 ? "—" : $"{weekPoints.Sum(p => p.CompletedPieces):N0}",
+                    Bars = weekPoints.Select(p => new ChartBar
+                    {
+                        Color = colorByProduct[p.ProductId],
+                        // ارتفاع نسبي على أعلى قيمة في الفترة (بحد أدنى مرئي للقيم الصغيرة)
+                        Height = Math.Max(4, (double)p.CompletedPieces / maxPieces * MaxBarHeight),
+                        Tooltip = $"{p.ProductName}\nأسبوع {p.WeekStart:dd/MM} - {p.WeekEnd:dd/MM}\n{p.CompletedPieces:N0} قطعة مكتملة"
+                    }).ToList()
+                });
+            }
+
+            ChartHasData = points.Count > 0;
+        }
+
         // ======================= تصدير Excel =======================
 
         [RelayCommand]
@@ -230,6 +325,30 @@ namespace WorkforceManager.UI.ViewModels
                 PenaltiesText = penaltiesText
             };
         }
+    }
+
+    /// <summary>مجموعة أعمدة أسبوع واحد في رسم إنتاج المنتجات</summary>
+    public class ChartWeekGroup
+    {
+        public string WeekLabel { get; init; } = "";
+        public string TotalText { get; init; } = "";
+        public List<ChartBar> Bars { get; init; } = new();
+    }
+
+    /// <summary>عمود واحد في الرسم: منتج في أسبوع (اللون بيميز المنتج)</summary>
+    public class ChartBar
+    {
+        public string Color { get; init; } = "#1F3864";
+        public double Height { get; init; }
+        public string Tooltip { get; init; } = "";
+    }
+
+    /// <summary>عنصر في مفتاح ألوان الرسم: المنتج ولونه وإجماليه في الفترة</summary>
+    public class ChartLegendItem
+    {
+        public string Color { get; init; } = "#1F3864";
+        public string ProductName { get; init; } = "";
+        public string TotalText { get; init; } = "";
     }
 
     /// <summary>سطر واحد في كشف الأسبوع (مرتّب بصافي اليوميات)</summary>
