@@ -42,7 +42,8 @@ namespace WorkforceManager.UI.ViewModels
 
         partial void OnDailyDateChanged(DateTime value)
         {
-            _ = LoadDailyAsync();
+            // تغيير اليوم بيعيد تحميل التقرير (وأي خطأ بيظهر مش بيضيع بصمت)
+            SafeAsync.Run(LoadDailyAsync);
         }
 
         /// <summary>سطر ملخص فوق الجدول: متوسط الفريق وعدد المنتجين</summary>

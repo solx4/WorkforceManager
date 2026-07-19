@@ -45,7 +45,6 @@ namespace WorkforceManager.UI
                     services.AddScoped<WorkdayCalculationService>();
                     services.AddScoped<PerformanceEvaluationService>();
                     services.AddScoped<AttendanceService>();
-                    services.AddScoped<WorkerProfileService>();
                     services.AddScoped<PenaltyService>();
                     services.AddScoped<WeeklySummaryService>();
                     services.AddScoped<WorkerManagementService>();
@@ -72,8 +71,26 @@ namespace WorkforceManager.UI
                 .Build();
         }
 
+        /// <summary>
+        /// قفل النسخة الواحدة: بيمنع فتح نسختين من البرنامج في نفس الوقت —
+        /// نسختين بيكتبوا على نفس قاعدة الـ SQLite بيعرّضوا البيانات للتعارض
+        /// والنسخ الاحتياطي للخبطة. بيفضل ممسوك طول عمر البرنامج.
+        /// </summary>
+        private static Mutex? _singleInstanceMutex;
+
         protected override async void OnStartup(StartupEventArgs e)
         {
+            // منع تشغيل نسخة تانية من البرنامج (النسخة الأولى بتفضل هي الشغالة)
+            _singleInstanceMutex = new Mutex(true, @"Local\WorkforceManager_SingleInstance", out var isFirstInstance);
+            if (!isFirstInstance)
+            {
+                MessageBox.Show(
+                    "البرنامج مفتوح بالفعل — استخدم النافذة المفتوحة.\n(فتح نسختين في نفس الوقت ممكن يبوّظ البيانات)",
+                    "البرنامج شغال", MessageBoxButton.OK, MessageBoxImage.Information);
+                Shutdown();
+                return;
+            }
+
             // معالج أخطاء عام: أي استثناء غير متوقع يوصل لخيط الواجهة بيظهر
             // للمستخدم برسالة واضحة بدل ما البرنامج يقفل فجأة من غير سبب مفهوم
             DispatcherUnhandledException += (_, args) =>

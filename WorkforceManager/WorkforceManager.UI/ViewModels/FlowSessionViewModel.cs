@@ -56,7 +56,8 @@ namespace WorkforceManager.UI.ViewModels
 
         partial void OnSelectedProductChanged(ProductOption? value)
         {
-            _ = ReloadAsync();
+            // تغيير المنتج بيعيد بناء بطاقات المراحل (وأي خطأ بيظهر مش بيضيع بصمت)
+            SafeAsync.Run(ReloadAsync);
         }
 
         /// <summary>مراحل المنتج المختار — بطاقة لكل مرحلة بعمالها المؤهلين</summary>

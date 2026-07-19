@@ -58,13 +58,14 @@ namespace WorkforceManager.UI.ViewModels
         // لما العامل المحدد يتغير، حمّل تفاصيله في اللوحة الجانبية
         partial void OnSelectedWorkerChanged(WorkerRow? value)
         {
-            _ = LoadDetailAsync(value);
+            // تحميل بروفايل العامل المحدد (وأي خطأ بيظهر مش بيضيع بصمت)
+            SafeAsync.Run(() => LoadDetailAsync(value));
         }
 
         // إعادة التحميل تلقائيًا عند تفعيل/إلغاء إظهار الموقوفين
         partial void OnShowInactiveChanged(bool value)
         {
-            _ = LoadAsync();
+            SafeAsync.Run(LoadAsync);
         }
 
         // ------- تحميل القائمة -------
@@ -105,11 +106,17 @@ namespace WorkforceManager.UI.ViewModels
                         .ToList();
                 }
 
-                // ضم الموقوفين لو المستخدم طلب كده (بيظهروا بعلامة مميزة)
+                // ضم الموقوفين لو المستخدم طلب كده (بيظهروا بعلامة مميزة) —
+                // مع تطبيق نفس كلمة البحث عليهم (بالاسم أو الكود) عشان
+                // البحث ميرجعش موقوفين مالهمش علاقة بالكلمة المكتوبة
                 if (ShowInactive)
                 {
                     var inactive = await workerRepo.FindAsync(w => !w.IsActive);
-                    workers.AddRange(inactive.Where(i => workers.All(w => w.Id != i.Id)));
+                    workers.AddRange(inactive
+                        .Where(i => workers.All(w => w.Id != i.Id))
+                        .Where(i => query.Length == 0
+                            || i.FullName.Contains(query)
+                            || (i.EmployeeCode?.Contains(query) ?? false)));
                 }
 
                 Workers.Clear();
