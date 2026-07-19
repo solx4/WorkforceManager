@@ -68,7 +68,9 @@ Core  <----------------------- UI
   view-models via callbacks, not RelativeSource), attendance grid (upsert per worker/date), and
   penalties (add with reason/deduction, list + delete for the day). `ReportsView` is implemented: daily evaluation tab (colored ratings vs team
   average) + weekly sheet tab (net-workdays ranking, week navigation, Excel export via
-  `WeeklyReportExcelService`/ClosedXML in Business). `ProductsView` is implemented: products list with
+  `WeeklyReportExcelService`/ClosedXML in Business) + products chart tab (weekly COMPLETED pieces per
+  product = pieces on each product's last stage only, via `ProductionChartService`; bars are native WPF
+  elements, no chart library; time axis forced LTR). `ProductsView` is implemented: products list with
   search/inactive filter, stages panel per product with quota management (`ProductManagementService` —
   stage names unique per product, quota edits only affect future entries thanks to the snapshot).
   All four sidebar screens are implemented. Navigation uses `Checked` (not `Click`) on the sidebar
