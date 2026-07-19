@@ -100,6 +100,9 @@ Core  <----------------------- UI
   penalty is a hard delete (no soft-delete value).
 - Soft-delete convention: `Worker.IsActive` / `Product.IsActive` / `ProductionStage.IsActive` flags are used
   instead of hard deletes, to preserve historical production/attendance records.
+- `AppUser`: login accounts (unique username + PBKDF2-SHA256 hash/salt, never plaintext — all hashing in
+  `AuthService`). Startup flow in `App.OnStartup`: migrate/seed → `EnsureDefaultUserAsync` (admin/admin on
+  first run) → `LoginWindow.ShowDialog()` (with `ShutdownMode` juggling) → MainWindow only on success.
 
 ### Business logic notes
 
