@@ -72,7 +72,11 @@ Core  <----------------------- UI
   stage names unique per product, quota edits only affect future entries thanks to the snapshot).
   All four sidebar screens are implemented. Navigation uses `Checked` (not `Click`) on the sidebar
   radios — handlers guard against the initial `Checked` that fires during `InitializeComponent` before
-  `MainContent` exists. ViewModels take `IServiceScopeFactory` and create a scope per operation
+  `MainContent` exists. `App.xaml` holds the design system: brand brushes (BrandBrush/AccentBrush/
+  Success/Danger/Warn + bg variants) and keyed styles (`Card`, `ToolbarCard`, `PrimaryButton`,
+  `SuccessButton`, `DangerButton`, `GhostButton`, `IconButton`, `ModernDataGrid` + header/cell/row
+  styles, `NavItem`) — style new UI from these resources, never inline colors; local DataGrid RowStyles
+  must use `BasedOn="{StaticResource ModernGridRow}"`. ViewModels take `IServiceScopeFactory` and create a scope per operation
   (keeps DbContext short-lived). Gotcha: WPF implicit styles don't apply to derived types, so the
   `TargetType="Window"` style in App.xaml does NOT hit `MainWindow` — set `FlowDirection="RightToLeft"`
   explicitly on each window.
