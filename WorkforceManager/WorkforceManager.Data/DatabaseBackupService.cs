@@ -1,12 +1,18 @@
 using System.Globalization;
+using Microsoft.Data.Sqlite;
 
 namespace WorkforceManager.Data
 {
     /// <summary>
-    /// مسؤولة عن أخذ نسخة احتياطية يومية تلقائية من ملف قاعدة البيانات (SQLite ملف
-    /// واحد، فالنسخ الاحتياطي هنا ببساطة نسخ الملف)، وحذف النسخ القديمة تلقائيًا
-    /// حفاظًا على مساحة القرص. بتتنفذ عند بدء التطبيق، قبل أي Migration، عشان لو
-    /// حصل خطأ أثناء تحديث قاعدة البيانات تفضل عندنا نسخة سليمة قبل التعديل.
+    /// النسخ الاحتياطي لقاعدة البيانات (SQLite ملف واحد، فالنسخ = نسخ الملف):
+    ///
+    /// - نسخة يومية تلقائية عند بدء التطبيق (قبل أي Migration) في مجلد Backups
+    ///   المحلي، مع حذف الأقدم من 30 يوم تلقائيًا.
+    /// - نسخة خارجية اختيارية (فلاشة / هارد تاني / مجلد شبكة): النسخة المحلية
+    ///   على نفس الهارد متحميش من تلف الهارد نفسه — الخارجية بتحمي. فشلها
+    ///   (فلاشة مش موصلة مثلًا) عمره ما يعطل تشغيل البرنامج.
+    /// - نسخة فورية بزرار "خد نسخة دلوقتي" من شاشة الإعدادات.
+    /// - استرجاع نسخة: بياخد نسخة أمان من الحالية الأول، وبعدها بيستبدلها.
     /// </summary>
     public static class DatabaseBackupService
     {
@@ -17,25 +23,118 @@ namespace WorkforceManager.Data
         private const string BackupPrefix = "workforce_";
 
         /// <summary>
-        /// بياخد نسخة من قاعدة البيانات بتاريخ النهاردة لو مفيش نسخة اتاخدت
-        /// بالفعل النهاردة (منعًا من تكرار نفس النسخة كذا مرة في نفس اليوم لو
-        /// المستخدم قفل وفتح البرنامج أكتر من مرة).
+        /// النسخة اليومية التلقائية عند بدء التطبيق: مرة واحدة في اليوم مهما
+        /// اتفتح البرنامج، محليًا + خارجيًا لو فيه مجلد خارجي متفعّل.
         /// </summary>
-        public static void RunDailyBackup(string dbPath)
+        public static void RunDailyBackup(string dbPath, string? externalFolder = null)
         {
             if (!File.Exists(dbPath))
                 return; // أول تشغيل للتطبيق: قاعدة البيانات لسه ما اتعملتش، مفيش حاجة نعمل لها باك أب
 
-            var backupsFolder = Path.Combine(Path.GetDirectoryName(dbPath)!, "Backups");
+            var backupsFolder = LocalBackupsFolder(dbPath);
             Directory.CreateDirectory(backupsFolder);
 
-            var todayBackupPath = Path.Combine(backupsFolder, $"{BackupPrefix}{DateTime.Today:yyyy-MM-dd}.db");
+            var todayBackupPath = Path.Combine(backupsFolder, TodayBackupName());
             if (!File.Exists(todayBackupPath))
             {
                 File.Copy(dbPath, todayBackupPath);
             }
 
             CleanupOldBackups(backupsFolder);
+            TryCopyToExternal(todayBackupPath, externalFolder);
+        }
+
+        /// <summary>
+        /// نسخة فورية الآن (بتحدّث نسخة اليوم لو موجودة) — لزرار
+        /// "خد نسخة دلوقتي". بيرجع مساري النسختين (الخارجية null لو متوقفة)،
+        /// وبيرمي استثناء واضح لو المجلد الخارجي متفعّل لكن مش متاح —
+        /// المستخدم ضغط الزرار بنفسه فلازم يعرف إن الخارجية ما اتعملتش.
+        /// </summary>
+        public static (string LocalPath, string? ExternalPath) BackupNow(string dbPath, string? externalFolder = null)
+        {
+            if (!File.Exists(dbPath))
+                throw new InvalidOperationException("ملف قاعدة البيانات غير موجود");
+
+            // قفل كل اتصالات SQLite المفتوحة عشان النسخة تطلع سليمة ومكتملة
+            SqliteConnection.ClearAllPools();
+
+            var backupsFolder = LocalBackupsFolder(dbPath);
+            Directory.CreateDirectory(backupsFolder);
+
+            var localPath = Path.Combine(backupsFolder, TodayBackupName());
+            File.Copy(dbPath, localPath, overwrite: true);
+            CleanupOldBackups(backupsFolder);
+
+            string? externalPath = null;
+            if (!string.IsNullOrWhiteSpace(externalFolder))
+            {
+                if (!Directory.Exists(externalFolder))
+                    throw new InvalidOperationException(
+                        $"المجلد الخارجي غير متاح:\n{externalFolder}\n\nوصّل الفلاشة/القرص أو راجع المسار من الإعدادات. (النسخة المحلية اتاخدت عادي)");
+
+                externalPath = Path.Combine(externalFolder, TodayBackupName());
+                File.Copy(localPath, externalPath, overwrite: true);
+                CleanupOldBackups(externalFolder);
+            }
+
+            return (localPath, externalPath);
+        }
+
+        /// <summary>
+        /// استرجاع نسخة احتياطية: بياخد نسخة أمان من قاعدة البيانات الحالية
+        /// الأول (workforce_before_restore_...) وبعدها بيستبدلها بالنسخة
+        /// المختارة. بيرجع مسار نسخة الأمان. البرنامج لازم يعيد التشغيل بعدها.
+        /// </summary>
+        public static string RestoreBackup(string dbPath, string backupFilePath)
+        {
+            if (!File.Exists(backupFilePath))
+                throw new InvalidOperationException("ملف النسخة الاحتياطية المختار غير موجود");
+
+            // قفل كل الاتصالات قبل لمس ملف قاعدة البيانات
+            SqliteConnection.ClearAllPools();
+
+            var backupsFolder = LocalBackupsFolder(dbPath);
+            Directory.CreateDirectory(backupsFolder);
+
+            // نسخة أمان بختم وقت كامل — اسمها مش بصيغة التاريخ اليومية عمدًا
+            // عشان التنظيف التلقائي ميمسحهاش (TryParseExact بيتخطاها)
+            var safetyPath = Path.Combine(backupsFolder,
+                $"{BackupPrefix}before_restore_{DateTime.Now:yyyy-MM-dd_HHmmss}.db");
+            if (File.Exists(dbPath))
+                File.Copy(dbPath, safetyPath);
+
+            File.Copy(backupFilePath, dbPath, overwrite: true);
+            return safetyPath;
+        }
+
+        // ------- تفاصيل داخلية -------
+
+        private static string LocalBackupsFolder(string dbPath) =>
+            Path.Combine(Path.GetDirectoryName(dbPath)!, "Backups");
+
+        private static string TodayBackupName() => $"{BackupPrefix}{DateTime.Today:yyyy-MM-dd}.db";
+
+        /// <summary>
+        /// النسخ الخارجي التلقائي (عند بدء التشغيل): أي فشل بيتتجاهل بصمت —
+        /// فلاشة مش موصلة الصبح مينفعش تمنع البرنامج من الفتح. النسخ اليدوي
+        /// من الزرار (BackupNow) هو اللي بيبلّغ عن الفشل بوضوح.
+        /// </summary>
+        private static void TryCopyToExternal(string localBackupPath, string? externalFolder)
+        {
+            if (string.IsNullOrWhiteSpace(externalFolder)) return;
+
+            try
+            {
+                if (!Directory.Exists(externalFolder)) return;
+
+                var target = Path.Combine(externalFolder, Path.GetFileName(localBackupPath));
+                File.Copy(localBackupPath, target, overwrite: true);
+                CleanupOldBackups(externalFolder);
+            }
+            catch
+            {
+                // النسخ الخارجي "أفضل جهد" — فشله عمره ما يكسر بدء التشغيل
+            }
         }
 
         /// <summary>
@@ -55,6 +154,7 @@ namespace WorkforceManager.Data
                 var datePart = fileName.Substring(BackupPrefix.Length); // الجزء بعد البادئة = التاريخ
 
                 // أي ملف اسمه مش متطابق مع الصيغة المتوقعة بنسيبه (مش بنمسحه) احتياطًا
+                // — ده بيشمل نسخ الأمان before_restore بالقصد
                 if (DateTime.TryParseExact(datePart, "yyyy-MM-dd",
                         CultureInfo.InvariantCulture, DateTimeStyles.None, out var backupDate)
                     && backupDate < cutoffDate)

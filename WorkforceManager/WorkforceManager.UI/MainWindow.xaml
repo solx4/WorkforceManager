@@ -83,6 +83,14 @@
                             <TextBlock Text="التقارير والتقييم" Margin="10,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
+
+                    <RadioButton Style="{StaticResource NavItem}"
+                                 Checked="NavSettings_Checked" Click="NavSettings_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="⚙️" FontSize="16" VerticalAlignment="Center" />
+                            <TextBlock Text="الإعدادات والنسخ" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
                 </StackPanel>
             </DockPanel>
         </Border>

@@ -26,14 +26,10 @@ namespace WorkforceManager.UI
                 .ConfigureServices((context, services) =>
                 {
                     // مسار قاعدة البيانات: مجلد بيانات التطبيق الخاص بالمستخدم (مش داخل مجلد البرنامج نفسه)
-                    var dbFolder = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                        "WorkforceManager");
-                    Directory.CreateDirectory(dbFolder);
-                    var dbPath = Path.Combine(dbFolder, "workforce.db");
+                    Directory.CreateDirectory(AppPaths.DataFolder);
 
                     services.AddDbContext<AppDbContext>(options =>
-                        options.UseSqlite($"Data Source={dbPath}"));
+                        options.UseSqlite($"Data Source={AppPaths.DbPath}"));
 
                     // Repositories
                     services.AddScoped<IWorkerRepository, WorkerRepository>();
@@ -70,6 +66,8 @@ namespace WorkforceManager.UI
                     services.AddTransient<ViewModels.ReportsViewModel>();
                     services.AddTransient<Views.ProductsView>();
                     services.AddTransient<ViewModels.ProductsViewModel>();
+                    services.AddTransient<Views.SettingsView>();
+                    services.AddTransient<ViewModels.SettingsViewModel>();
                 })
                 .Build();
         }
@@ -95,9 +93,10 @@ namespace WorkforceManager.UI
                     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
                     // نسخة احتياطية يومية قبل أي تعديل على قاعدة البيانات، عشان لو
-                    // الـ Migration فشل لأي سبب تفضل عندنا نسخة سليمة من قبل التعديل
-                    var dbPath = db.Database.GetDbConnection().DataSource;
-                    DatabaseBackupService.RunDailyBackup(dbPath);
+                    // الـ Migration فشل لأي سبب تفضل عندنا نسخة سليمة من قبل التعديل —
+                    // محليًا + خارجيًا لو المستخدم مفعّل مجلد خارجي من الإعدادات
+                    var settings = AppSettingsStore.Load();
+                    DatabaseBackupService.RunDailyBackup(AppPaths.DbPath, settings.ExternalBackupFolder);
 
                     // تطبيق أي Migration جديدة تلقائيًا (بيُنشئ قاعدة البيانات من الصفر
                     // لو مش موجودة أصلاً) — بديل EnsureCreatedAsync عشان تحديثات
