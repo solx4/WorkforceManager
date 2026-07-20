@@ -20,6 +20,7 @@ namespace WorkforceManager.Data
         public DbSet<Attendance> Attendances => Set<Attendance>();
         public DbSet<Penalty> Penalties => Set<Penalty>();
         public DbSet<AppUser> AppUsers => Set<AppUser>();
+        public DbSet<HourlyWorkLog> HourlyWorkLogs => Set<HourlyWorkLog>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -90,6 +91,18 @@ namespace WorkforceManager.Data
 
             modelBuilder.Entity<Penalty>()
                 .HasIndex(p => p.Date);
+
+            // ---------- HourlyWorkLog: Worker (1-to-many) ----------
+            modelBuilder.Entity<HourlyWorkLog>()
+                .HasOne(h => h.Worker)
+                .WithMany(w => w.HourlyWorkLogs)
+                .HasForeignKey(h => h.WorkerId)
+                .OnDelete(DeleteBehavior.Cascade); // نفس قاعدة الحضور: حذف عامل (نادر) يحذف سجلات ساعاته
+
+            // WorkdaysCredited رقم عشري بدقة كافية للنص واليوميات
+            modelBuilder.Entity<HourlyWorkLog>()
+                .Property(h => h.WorkdaysCredited)
+                .HasColumnType("decimal(5,2)");
 
             // ---------- AppUser: اسم المستخدم فريد (مفيش حسابين بنفس الاسم) ----------
             modelBuilder.Entity<AppUser>()

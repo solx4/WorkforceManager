@@ -39,6 +39,17 @@ namespace WorkforceManager.Core.Models
         public DateTime? HireDate { get; set; }
 
         /// <summary>
+        /// دور العامل بالساعة (رص/جودة/تدريب/أخرى) — لو مُحدد فالعامل
+        /// بيتحاسب بعدد الساعات مش بالإنتاج، وبيظهر في تبويب "العمال
+        /// بالساعة" بدل رحلة الإنتاج. null = عامل إنتاج عادي (بالقطعة).
+        /// </summary>
+        public Enums.HourlyRole? HourlyRole { get; set; }
+
+        /// <summary>هل هذا العامل بيتحاسب بالساعة؟ (له دور بالساعة)</summary>
+        [NotMapped]
+        public bool IsHourly => HourlyRole is not null;
+
+        /// <summary>
         /// يسمح بإلغاء تفعيل عامل (ترك العمل) دون حذف بياناته وسجل إنتاجه القديم.
         /// أفضل من الحذف الفعلي (Soft Delete) للحفاظ على سلامة السجلات التاريخية.
         /// </summary>
@@ -59,6 +70,9 @@ namespace WorkforceManager.Core.Models
 
         /// <summary>كل الجزاءات المسجّلة على هذا العامل عبر الزمن (بتتخصم من يومياته الأسبوعية)</summary>
         public virtual ICollection<Penalty> Penalties { get; set; } = new List<Penalty>();
+
+        /// <summary>سجلات الشغل بالساعة (للعمال بالساعة فقط)</summary>
+        public virtual ICollection<HourlyWorkLog> HourlyWorkLogs { get; set; } = new List<HourlyWorkLog>();
 
         [NotMapped]
         public string DisplayName => string.IsNullOrWhiteSpace(EmployeeCode)
