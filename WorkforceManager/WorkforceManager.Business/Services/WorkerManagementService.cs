@@ -29,7 +29,7 @@ namespace WorkforceManager.Business.Services
         /// </summary>
         public async Task<Worker> CreateWorkerAsync(
             string fullName, string? employeeCode = null, string? phoneNumber = null,
-            DateTime? hireDate = null, string? skillsNotes = null)
+            DateTime? hireDate = null, string? skillsNotes = null, HourlyRole? hourlyRole = null)
         {
             if (string.IsNullOrWhiteSpace(fullName))
                 throw new ArgumentException("اسم العامل مطلوب", nameof(fullName));
@@ -44,7 +44,8 @@ namespace WorkforceManager.Business.Services
                 EmployeeCode = string.IsNullOrWhiteSpace(employeeCode) ? null : employeeCode.Trim(),
                 PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim(),
                 HireDate = hireDate,
-                SkillsNotes = string.IsNullOrWhiteSpace(skillsNotes) ? null : skillsNotes.Trim()
+                SkillsNotes = string.IsNullOrWhiteSpace(skillsNotes) ? null : skillsNotes.Trim(),
+                HourlyRole = hourlyRole
             };
 
             await _workerRepo.AddAsync(worker);
@@ -55,7 +56,8 @@ namespace WorkforceManager.Business.Services
         /// <summary>يعدّل البيانات الأساسية لعامل موجود (نفس قواعد التحقق بتاعة الإضافة)</summary>
         public async Task<Worker> UpdateWorkerAsync(
             int workerId, string fullName, string? employeeCode = null,
-            string? phoneNumber = null, DateTime? hireDate = null, string? skillsNotes = null)
+            string? phoneNumber = null, DateTime? hireDate = null, string? skillsNotes = null,
+            HourlyRole? hourlyRole = null)
         {
             if (string.IsNullOrWhiteSpace(fullName))
                 throw new ArgumentException("اسم العامل مطلوب", nameof(fullName));
@@ -73,6 +75,7 @@ namespace WorkforceManager.Business.Services
             worker.PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim();
             worker.HireDate = hireDate;
             worker.SkillsNotes = string.IsNullOrWhiteSpace(skillsNotes) ? null : skillsNotes.Trim();
+            worker.HourlyRole = hourlyRole;
 
             _workerRepo.Update(worker);
             await _workerRepo.SaveChangesAsync();

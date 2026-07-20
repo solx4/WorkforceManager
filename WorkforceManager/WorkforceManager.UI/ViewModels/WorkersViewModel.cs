@@ -188,6 +188,8 @@ namespace WorkforceManager.UI.ViewModels
                 HireDateText = worker.HireDate?.ToString("yyyy/MM/dd") ?? "—",
                 SkillsNotes = worker.SkillsNotes ?? "",
                 IsActive = worker.IsActive,
+                HourlyRole = worker.HourlyRole,
+                HourlyRoleText = worker.HourlyRole?.ToArabicName() ?? "",
                 Skills = new ObservableCollection<SkillItem>(worker.Skills.Select(s => new SkillItem
                 {
                     StageId = s.ProductionStageId,
@@ -224,7 +226,7 @@ namespace WorkforceManager.UI.ViewModels
                 var mgmt = scope.ServiceProvider.GetRequiredService<WorkerManagementService>();
                 await mgmt.CreateWorkerAsync(
                     dialog.WorkerName, dialog.EmployeeCode, dialog.PhoneNumber,
-                    dialog.HireDate, dialog.SkillsNotes);
+                    dialog.HireDate, dialog.SkillsNotes, dialog.HourlyRole);
                 await LoadAsync();
             }
             catch (Exception ex)
@@ -247,7 +249,7 @@ namespace WorkforceManager.UI.ViewModels
                 Detail.EmployeeCode == "—" ? null : Detail.EmployeeCode,
                 Detail.PhoneNumber == "—" ? null : Detail.PhoneNumber,
                 Detail.HireDateText == "—" ? null : DateTime.Parse(Detail.HireDateText),
-                Detail.SkillsNotes);
+                Detail.SkillsNotes, Detail.HourlyRole);
 
             if (dialog.ShowDialog() != true) return;
 
@@ -257,7 +259,7 @@ namespace WorkforceManager.UI.ViewModels
                 var mgmt = scope.ServiceProvider.GetRequiredService<WorkerManagementService>();
                 await mgmt.UpdateWorkerAsync(
                     SelectedWorker.WorkerId, dialog.WorkerName, dialog.EmployeeCode,
-                    dialog.PhoneNumber, dialog.HireDate, dialog.SkillsNotes);
+                    dialog.PhoneNumber, dialog.HireDate, dialog.SkillsNotes, dialog.HourlyRole);
                 await LoadAsync();
             }
             catch (Exception ex)
@@ -347,6 +349,15 @@ namespace WorkforceManager.UI.ViewModels
         public string HireDateText { get; init; } = "";
         public string SkillsNotes { get; init; } = "";
         public bool IsActive { get; init; }
+
+        /// <summary>دور العامل بالساعة (null = عامل إنتاج بالقطعة)</summary>
+        public Core.Enums.HourlyRole? HourlyRole { get; init; }
+
+        /// <summary>نص الدور بالساعة للعرض في البروفايل (فاضي لعامل الإنتاج)</summary>
+        public string HourlyRoleText { get; init; } = "";
+
+        /// <summary>هل هو عامل بالساعة؟ (لإظهار شارة في البروفايل)</summary>
+        public bool IsHourly => HourlyRole is not null;
 
         public ObservableCollection<SkillItem> Skills { get; init; } = new();
         public ObservableCollection<WeekHistoryItem> WeeklyHistory { get; init; } = new();

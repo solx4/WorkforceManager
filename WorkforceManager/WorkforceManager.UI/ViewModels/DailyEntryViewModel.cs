@@ -86,6 +86,7 @@ namespace WorkforceManager.UI.ViewModels
             FlowSessions.Add(firstSession);
 
             await LoadDayRecordsAsync();
+            await LoadHourlyAsync();
             await LoadAttendanceAsync();
             await LoadPenaltiesAsync();
         }
@@ -97,6 +98,7 @@ namespace WorkforceManager.UI.ViewModels
                 await session.ReloadAsync();
 
             await LoadDayRecordsAsync();
+            await LoadHourlyAsync();
             await LoadAttendanceAsync();
             await LoadPenaltiesAsync();
         }
@@ -217,6 +219,94 @@ namespace WorkforceManager.UI.ViewModels
             {
                 MessageBox.Show(ex.Message, "خطأ في الحذف", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+        }
+
+        // ======================= قسم العمال بالساعة =======================
+
+        /// <summary>
+        /// خيارات وقت انتهاء الشغل (الشيفت بيبدأ 8ص). القيمة بنظام 24
+        /// (16=4م، 20=8م، 24=12ص). بنعرض من 12ظ لـ 12 منتصف الليل.
+        /// </summary>
+        public static List<EndHourOption> EndHourOptions { get; } = BuildEndHourOptions();
+
+        private static List<EndHourOption> BuildEndHourOptions()
+        {
+            var list = new List<EndHourOption>();
+            for (var h = 12; h <= 24; h++)
+            {
+                string label = h switch
+                {
+                    12 => "12 ظهرًا",
+                    24 => "12 منتصف الليل",
+                    < 12 => $"{h} صباحًا",
+                    _ => $"{h - 12} مساءً"
+                };
+                list.Add(new EndHourOption(h, $"خلص {label}"));
+            }
+            return list;
+        }
+
+        public ObservableCollection<HourlyRow> HourlyRows { get; } = new();
+
+        private async Task LoadHourlyAsync()
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var workerRepo = scope.ServiceProvider.GetRequiredService<IWorkerRepository>();
+            var hourlyService = scope.ServiceProvider.GetRequiredService<HourlyWorkdayService>();
+
+            // العمال بالساعة فقط (اللي ليهم دور بالساعة)
+            var workers = (await workerRepo.FindAsync(w => w.IsActive && w.HourlyRole != null))
+                .OrderBy(w => w.FullName)
+                .ToList();
+
+            var existing = (await hourlyService.GetByDateAsync(EntryDate))
+                .ToDictionary(h => h.WorkerId);
+
+            HourlyRows.Clear();
+            foreach (var w in workers)
+            {
+                existing.TryGetValue(w.Id, out var log);
+                HourlyRows.Add(new HourlyRow
+                {
+                    WorkerId = w.Id,
+                    FullName = w.FullName,
+                    EmployeeCode = w.EmployeeCode ?? "—",
+                    RoleText = w.HourlyRole!.Value.ToArabicName(),
+                    // لو متسجل قبل كده، بنعرض وقته المحفوظ
+                    SelectedEndHour = log is not null
+                        ? EndHourOptions.FirstOrDefault(o => o.Hour24 == log.EndHour24)
+                        : null
+                });
+            }
+        }
+
+        [RelayCommand]
+        private async Task SaveHourlyAsync()
+        {
+            // العمال اللي المستخدم حدد لهم وقت انتهاء
+            var toSave = HourlyRows.Where(r => r.SelectedEndHour is not null).ToList();
+            if (toSave.Count == 0)
+            {
+                MessageBox.Show("مفيش أي عامل محدد له وقت انتهاء للحفظ", "تنبيه",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            using var scope = _scopeFactory.CreateScope();
+            var hourlyService = scope.ServiceProvider.GetRequiredService<HourlyWorkdayService>();
+
+            var saved = 0;
+            foreach (var row in toSave)
+            {
+                await hourlyService.RecordHourlyWorkAsync(row.WorkerId, EntryDate, row.SelectedEndHour!.Hour24);
+                saved++;
+            }
+
+            MessageBox.Show($"تم حفظ شغل {saved} عامل بالساعة بتاريخ {EntryDate:yyyy/MM/dd}\n(واتسجل حضورهم تلقائيًا)",
+                "تم الحفظ", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            await LoadHourlyAsync();
+            await LoadAttendanceAsync();
         }
 
         // ======================= قسم الحضور =======================
@@ -401,6 +491,33 @@ namespace WorkforceManager.UI.ViewModels
         public int PieceCount { get; init; }
         public int QuotaAtEntry { get; init; }
         public decimal Workdays { get; init; }
+    }
+
+    /// <summary>خيار وقت انتهاء الشغل في قائمة العامل بالساعة</summary>
+    public record EndHourOption(int Hour24, string Display);
+
+    /// <summary>
+    /// سطر عامل بالساعة في تبويب التسجيل: بيختار وقت الانتهاء، والنظام
+    /// بيعرض اليوميات المحسوبة لحظيًا قبل الحفظ.
+    /// </summary>
+    public partial class HourlyRow : ObservableObject
+    {
+        public int WorkerId { get; init; }
+        public string FullName { get; init; } = "";
+        public string EmployeeCode { get; init; } = "";
+        public string RoleText { get; init; } = "";
+
+        [ObservableProperty]
+        private EndHourOption? _selectedEndHour;
+
+        /// <summary>معاينة اليوميات لحظيًا حسب وقت الانتهاء المختار</summary>
+        public string WorkdaysPreview =>
+            SelectedEndHour is null
+                ? ""
+                : $"≈ {HourlyWorkdayService.ComputeWorkdays(SelectedEndHour.Hour24)} يومية";
+
+        // تحديث المعاينة كل ما وقت الانتهاء يتغير
+        partial void OnSelectedEndHourChanged(EndHourOption? value) => OnPropertyChanged(nameof(WorkdaysPreview));
     }
 
     /// <summary>خيار حالة حضور في القائمة المنسدلة ("—" = بدون تسجيل)</summary>

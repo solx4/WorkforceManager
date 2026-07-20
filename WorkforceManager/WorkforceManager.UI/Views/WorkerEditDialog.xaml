@@ -21,6 +21,12 @@
         <TextBlock Text="تاريخ الالتحاق" FontWeight="Bold" Margin="0,0,0,4" />
         <DatePicker x:Name="HireDatePicker" Margin="0,0,0,12" />
 
+        <TextBlock Text="نوع الحساب" FontWeight="Bold" Margin="0,0,0,4" />
+        <ComboBox x:Name="HourlyRoleBox" Padding="8,6" Margin="0,0,0,4"
+                  DisplayMemberPath="Display" SelectedValuePath="Role" />
+        <TextBlock Text="عامل الإنتاج بيتحاسب بالقطعة (من مهاراته). العامل بالساعة (رص/جودة/تدريب) بيتحاسب بالساعات ويظهر في تبويب منفصل."
+                   Style="{StaticResource HintText}" Margin="0,0,0,14" />
+
         <TextBlock Text="ملاحظات المهارات (اختياري)" FontWeight="Bold" Margin="0,0,0,4" />
         <TextBox x:Name="NotesBox" Padding="8,6" Margin="0,0,0,16"
                  TextWrapping="Wrap" AcceptsReturn="True" Height="70"

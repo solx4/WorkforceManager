@@ -114,11 +114,28 @@
                             <!-- رأس البروفايل + أزرار الإدارة -->
                             <TextBlock Text="{Binding FullName}" FontSize="18" FontWeight="Bold" Foreground="#1F3864"
                                        TextWrapping="Wrap" />
-                            <TextBlock FontSize="12" Foreground="#666" Margin="0,2,0,8">
+                            <TextBlock FontSize="12" Foreground="#666" Margin="0,2,0,4">
                                 <Run Text="الكود: " /><Run Text="{Binding EmployeeCode, Mode=OneWay}" />
                                 <Run Text="   تليفون: " /><Run Text="{Binding PhoneNumber, Mode=OneWay}" />
                                 <Run Text="   التحق: " /><Run Text="{Binding HireDateText, Mode=OneWay}" />
                             </TextBlock>
+
+                            <!-- شارة العامل بالساعة (بتظهر بس لو ليه دور بالساعة) -->
+                            <Border Background="{StaticResource WarnBgBrush}" CornerRadius="6" Padding="8,3"
+                                    HorizontalAlignment="Right" Margin="0,0,0,8">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsHourly}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource WarnBrush}">
+                                    <Run Text="⏱ " /><Run Text="{Binding HourlyRoleText, Mode=OneWay}" /><Run Text=" — بيتحاسب بالساعة" />
+                                </TextBlock>
+                            </Border>
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                 <Button Content="✏ تعديل"
