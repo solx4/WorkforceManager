@@ -110,6 +110,9 @@ Core  <----------------------- UI
   have no `WorkerSkill` links, don't appear in production flow, and log via `HourlyWorkLog` instead.
 - `HourlyWorkLog`: one row per hourly worker per date (unique index). Stores `EndHour24` (24h clock, shift
   starts fixed 8am) and a snapshot `WorkdaysCredited`. Cascade-deletes with `Worker`.
+- `Worker.DailyWageEgp` (decimal, default 0): pay per workday in EGP. Wage = NetWorkdays × DailyWageEgp.
+  NOT a snapshot — the current price applies to all periods (changing it re-computes all past wages).
+  Applies to both piece-rate and hourly workers.
 - `AppUser`: login accounts (unique username + PBKDF2-SHA256 hash/salt, never plaintext — all hashing in
   `AuthService`). Startup flow in `App.OnStartup`: migrate/seed → `EnsureDefaultUserAsync` (admin/admin on
   first run) → `LoginWindow.ShowDialog()` (with `ShutdownMode` juggling) → MainWindow only on success.
@@ -131,6 +134,11 @@ Core  <----------------------- UI
   Unexcused absence (`AbsentWithoutPermission`) always ranks worst regardless of any production; excused
   absence is neutral (`Average`). Thresholds (`TopPerformerThreshold`, `AboveAverageThreshold`,
   `BelowAverageThreshold`) are relative percentages vs. team average, defined as constants in that service.
+- `PayrollService.GetPeriodPayrollAsync(from, to)`: custom-period (e.g. monthly) wage sheet. Aggregates
+  ALL days in the range directly (not whole weeks): produced + hourly workdays − absence/penalty
+  deductions, × current wage. Surfaced in ReportsView's "كشف الأجور" tab (date range + Excel export via
+  `WeeklyReportExcelService.ExportPeriodPayroll`). Weekly wage also shows in the weekly sheet (`NetWageEgp`
+  column + totals row in Excel) and per-week in the worker profile.
 - `HourlyWorkdayService`: hourly wage ladder. Shift 8am→4pm. `ComputeWorkdays(endHour24)` (pure/static):
   finished by 4pm → pro-rata `(endHour-8)/8` (max 1.0); finished 4pm–8pm → 1.5; finished 8pm–midnight →
   2.0. NON-cumulative (last period reached wins). `RecordHourlyWorkAsync` upserts + snapshots + auto-marks
