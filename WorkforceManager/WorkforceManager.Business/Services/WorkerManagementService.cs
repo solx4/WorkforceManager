@@ -29,10 +29,13 @@ namespace WorkforceManager.Business.Services
         /// </summary>
         public async Task<Worker> CreateWorkerAsync(
             string fullName, string? employeeCode = null, string? phoneNumber = null,
-            DateTime? hireDate = null, string? skillsNotes = null, HourlyRole? hourlyRole = null)
+            DateTime? hireDate = null, string? skillsNotes = null, HourlyRole? hourlyRole = null,
+            decimal dailyWageEgp = 0)
         {
             if (string.IsNullOrWhiteSpace(fullName))
                 throw new ArgumentException("اسم العامل مطلوب", nameof(fullName));
+            if (dailyWageEgp < 0)
+                throw new ArgumentException("سعر اليومية لا يصح يكون سالبًا", nameof(dailyWageEgp));
 
             if (!string.IsNullOrWhiteSpace(employeeCode) &&
                 await _workerRepo.EmployeeCodeExistsAsync(employeeCode))
@@ -45,7 +48,8 @@ namespace WorkforceManager.Business.Services
                 PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim(),
                 HireDate = hireDate,
                 SkillsNotes = string.IsNullOrWhiteSpace(skillsNotes) ? null : skillsNotes.Trim(),
-                HourlyRole = hourlyRole
+                HourlyRole = hourlyRole,
+                DailyWageEgp = dailyWageEgp
             };
 
             await _workerRepo.AddAsync(worker);
@@ -57,10 +61,12 @@ namespace WorkforceManager.Business.Services
         public async Task<Worker> UpdateWorkerAsync(
             int workerId, string fullName, string? employeeCode = null,
             string? phoneNumber = null, DateTime? hireDate = null, string? skillsNotes = null,
-            HourlyRole? hourlyRole = null)
+            HourlyRole? hourlyRole = null, decimal dailyWageEgp = 0)
         {
             if (string.IsNullOrWhiteSpace(fullName))
                 throw new ArgumentException("اسم العامل مطلوب", nameof(fullName));
+            if (dailyWageEgp < 0)
+                throw new ArgumentException("سعر اليومية لا يصح يكون سالبًا", nameof(dailyWageEgp));
 
             var worker = await _workerRepo.GetByIdAsync(workerId)
                 ?? throw new InvalidOperationException("العامل المحدد غير موجود");
@@ -76,6 +82,7 @@ namespace WorkforceManager.Business.Services
             worker.HireDate = hireDate;
             worker.SkillsNotes = string.IsNullOrWhiteSpace(skillsNotes) ? null : skillsNotes.Trim();
             worker.HourlyRole = hourlyRole;
+            worker.DailyWageEgp = dailyWageEgp;
 
             _workerRepo.Update(worker);
             await _workerRepo.SaveChangesAsync();

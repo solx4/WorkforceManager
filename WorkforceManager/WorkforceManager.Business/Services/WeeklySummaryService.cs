@@ -211,6 +211,7 @@ namespace WorkforceManager.Business.Services
                 IsHourly = workerRef.IsHourly,
                 HourlyDaysWorked = workerHourly.Count,
                 HourlyWorkdays = hourlyWorkdays,
+                DailyWageEgp = workerRef.DailyWageEgp,
 
                 ProducedWorkdays = workerProduction.Sum(p => p.WorkdaysCompleted) + hourlyWorkdays,
                 TotalPieces = workerProduction.Sum(p => p.PieceCount),

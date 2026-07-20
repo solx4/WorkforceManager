@@ -92,6 +92,11 @@ namespace WorkforceManager.Data
             modelBuilder.Entity<Penalty>()
                 .HasIndex(p => p.Date);
 
+            // سعر اليومية بالجنيه بدقة عشرية كافية
+            modelBuilder.Entity<Worker>()
+                .Property(w => w.DailyWageEgp)
+                .HasColumnType("decimal(10,2)");
+
             // ---------- HourlyWorkLog: Worker (1-to-many) ----------
             modelBuilder.Entity<HourlyWorkLog>()
                 .HasOne(h => h.Worker)

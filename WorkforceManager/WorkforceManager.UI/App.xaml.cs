@@ -53,6 +53,7 @@ namespace WorkforceManager.UI
                     services.AddScoped<ProductionFlowService>();
                     services.AddScoped<ProductionChartService>();
                     services.AddScoped<HourlyWorkdayService>();
+                    services.AddScoped<PayrollService>();
                     services.AddScoped<AuthService>();
                     // خدمة التصدير Singleton لأنها بدون حالة ولا بتلمس قاعدة البيانات
                     services.AddSingleton<WeeklyReportExcelService>();

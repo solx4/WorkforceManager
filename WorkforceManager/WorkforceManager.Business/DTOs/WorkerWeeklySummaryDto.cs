@@ -72,6 +72,14 @@ namespace WorkforceManager.Business.DTOs
         /// </summary>
         public decimal NetWorkdays => ProducedWorkdays - AbsenceDeduction - PenaltyDeduction;
 
+        // ------- الأجر بالجنيه -------
+
+        /// <summary>سعر يومية العامل بالجنيه (الحالي)</summary>
+        public decimal DailyWageEgp { get; set; }
+
+        /// <summary>أجر الأسبوع بالجنيه = صافي اليوميات × سعر اليومية</summary>
+        public decimal NetWageEgp => NetWorkdays * DailyWageEgp;
+
         /// <summary>هل هذا العامل هو أحسن عامل في الأسبوع؟ (أعلى صافي يوميات)</summary>
         public bool IsBestWorkerOfWeek { get; set; }
     }
