@@ -65,7 +65,9 @@ Core  <----------------------- UI
   `FlowSessionViewModel` card — stages as ordered cards, qualified-only workers per stage with equal
   auto-split + manual override, stage ranges "from stage X to Y: N pieces", live per-worker workdays
   preview, independent save; "add product" button appends sessions; row-level commands live on the row
-  view-models via callbacks, not RelativeSource), attendance grid (upsert per worker/date), and
+  view-models via callbacks, not RelativeSource), a "سجلات اليوم" correction tab (edit/delete saved
+  production records), an "العمال بالساعة" tab (hourly workers pick an end-hour → live workdays preview
+  via the ladder → save + auto-attendance), attendance grid (upsert per worker/date), and
   penalties (add with reason/deduction, list + delete for the day). `ReportsView` is implemented: daily evaluation tab (colored ratings vs team
   average) + weekly sheet tab (net-workdays ranking, week navigation, Excel export via
   `WeeklyReportExcelService`/ClosedXML in Business) + products chart tab (weekly COMPLETED pieces per
@@ -103,9 +105,17 @@ Core  <----------------------- UI
   penalty is a hard delete (no soft-delete value).
 - Soft-delete convention: `Worker.IsActive` / `Product.IsActive` / `ProductionStage.IsActive` flags are used
   instead of hard deletes, to preserve historical production/attendance records.
+- Two worker pay types: piece-rate (default) vs hourly. `Worker.HourlyRole` (nullable `HourlyRole` enum:
+  Training/Racking/Quality/Other) — non-null means the worker is paid by hours, not pieces. Hourly workers
+  have no `WorkerSkill` links, don't appear in production flow, and log via `HourlyWorkLog` instead.
+- `HourlyWorkLog`: one row per hourly worker per date (unique index). Stores `EndHour24` (24h clock, shift
+  starts fixed 8am) and a snapshot `WorkdaysCredited`. Cascade-deletes with `Worker`.
 - `AppUser`: login accounts (unique username + PBKDF2-SHA256 hash/salt, never plaintext — all hashing in
   `AuthService`). Startup flow in `App.OnStartup`: migrate/seed → `EnsureDefaultUserAsync` (admin/admin on
   first run) → `LoginWindow.ShowDialog()` (with `ShutdownMode` juggling) → MainWindow only on success.
+- Seeding (`DatabaseSeeder`): first-run seeds products/workers (`RealDataSeed`) + skill links
+  (`WorkerSkillsSeed`, idempotent). `SeedHourlyRolesAsync` runs every startup (idempotent) — sets
+  `HourlyRole` on descriptive workers (رص/جودة/تدريب) that have notes but no skills and no role yet.
 
 ### Business logic notes
 
@@ -121,6 +131,11 @@ Core  <----------------------- UI
   Unexcused absence (`AbsentWithoutPermission`) always ranks worst regardless of any production; excused
   absence is neutral (`Average`). Thresholds (`TopPerformerThreshold`, `AboveAverageThreshold`,
   `BelowAverageThreshold`) are relative percentages vs. team average, defined as constants in that service.
+- `HourlyWorkdayService`: hourly wage ladder. Shift 8am→4pm. `ComputeWorkdays(endHour24)` (pure/static):
+  finished by 4pm → pro-rata `(endHour-8)/8` (max 1.0); finished 4pm–8pm → 1.5; finished 8pm–midnight →
+  2.0. NON-cumulative (last period reached wins). `RecordHourlyWorkAsync` upserts + snapshots + auto-marks
+  Present. `WeeklySummaryService` sums `HourlyWorkLog.WorkdaysCredited` into `ProducedWorkdays` so hourly
+  days flow into net workdays / weekly sheet / pay exactly like piece production.
 - `AttendanceService.RecordAttendanceAsync` is an upsert (one record per worker/date). Recording an
   absence for a worker who has production that day is REJECTED (single and batch — batch is
   all-or-nothing, names the conflicting workers). Delete the production first if truly absent.
