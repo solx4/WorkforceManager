@@ -26,3 +26,6 @@ x86/
 
 ## Word temp lock files
 ~$*.docx
+
+## نسخة التوزيع المحمولة (build output)
+dist/
