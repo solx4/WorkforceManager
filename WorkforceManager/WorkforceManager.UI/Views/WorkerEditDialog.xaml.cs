@@ -41,9 +41,13 @@ namespace WorkforceManager.UI.Views
         public string? SkillsNotes => string.IsNullOrWhiteSpace(NotesBox.Text) ? null : NotesBox.Text.Trim();
         public HourlyRoleEnum? HourlyRole => HourlyRoleBox.SelectedValue as HourlyRoleEnum?;
 
+        /// <summary>سعر اليومية بالجنيه (مضمون رقم غير سالب بعد Save_Click)</summary>
+        public decimal DailyWageEgp =>
+            decimal.TryParse(WageBox.Text.Trim(), out var w) ? w : 0m;
+
         /// <summary>تعبئة الفورم ببيانات عامل موجود (وضع التعديل)</summary>
         public void LoadWorker(string fullName, string? code, string? phone, DateTime? hireDate,
-            string? notes, HourlyRoleEnum? hourlyRole)
+            string? notes, HourlyRoleEnum? hourlyRole, decimal dailyWageEgp)
         {
             NameBox.Text = fullName;
             CodeBox.Text = code ?? "";
@@ -51,6 +55,7 @@ namespace WorkforceManager.UI.Views
             HireDatePicker.SelectedDate = hireDate;
             NotesBox.Text = notes ?? "";
             HourlyRoleBox.SelectedValue = hourlyRole;
+            WageBox.Text = dailyWageEgp > 0 ? dailyWageEgp.ToString("0.##") : "";
         }
 
         private void Save_Click(object sender, RoutedEventArgs e)
@@ -61,6 +66,16 @@ namespace WorkforceManager.UI.Views
                 ErrorText.Text = "اسم العامل مطلوب";
                 ErrorText.Visibility = Visibility.Visible;
                 NameBox.Focus();
+                return;
+            }
+
+            // سعر اليومية لو متكتب لازم يكون رقم غير سالب
+            var wageText = WageBox.Text.Trim();
+            if (wageText.Length > 0 && (!decimal.TryParse(wageText, out var wage) || wage < 0))
+            {
+                ErrorText.Text = "سعر اليومية لازم يكون رقم موجب (أو سيبه فاضي)";
+                ErrorText.Visibility = Visibility.Visible;
+                WageBox.Focus();
                 return;
             }
 

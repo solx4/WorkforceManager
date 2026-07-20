@@ -190,6 +190,10 @@ namespace WorkforceManager.UI.ViewModels
                 IsActive = worker.IsActive,
                 HourlyRole = worker.HourlyRole,
                 HourlyRoleText = worker.HourlyRole?.ToArabicName() ?? "",
+                DailyWageEgp = worker.DailyWageEgp,
+                WageText = worker.DailyWageEgp > 0
+                    ? $"سعر اليومية: {worker.DailyWageEgp:N0} جنيه"
+                    : "سعر اليومية: لم يُحدد",
                 Skills = new ObservableCollection<SkillItem>(worker.Skills.Select(s => new SkillItem
                 {
                     StageId = s.ProductionStageId,
@@ -202,6 +206,8 @@ namespace WorkforceManager.UI.ViewModels
                     AbsenceDeduction = h.AbsenceDeduction,
                     PenaltyDeduction = h.PenaltyDeduction,
                     Net = h.NetWorkdays,
+                    // أجر الأسبوع بالجنيه (بيظهر بس لو ليه سعر يومية)
+                    WageText = h.DailyWageEgp > 0 ? $"{h.NetWageEgp:N0} ج" : "",
                     BestMark = h.IsBestWorkerOfWeek ? "⭐" : "",
                     // تفصيل المراحل اللي اشتغل عليها الأسبوع ده (بيظهر تحت السطر)
                     BreakdownText = string.Join("، ", h.Breakdown.Select(b => $"{b.ProductName}/{b.StageName}: {b.PieceCount} قطعة")),
@@ -226,7 +232,7 @@ namespace WorkforceManager.UI.ViewModels
                 var mgmt = scope.ServiceProvider.GetRequiredService<WorkerManagementService>();
                 await mgmt.CreateWorkerAsync(
                     dialog.WorkerName, dialog.EmployeeCode, dialog.PhoneNumber,
-                    dialog.HireDate, dialog.SkillsNotes, dialog.HourlyRole);
+                    dialog.HireDate, dialog.SkillsNotes, dialog.HourlyRole, dialog.DailyWageEgp);
                 await LoadAsync();
             }
             catch (Exception ex)
@@ -249,7 +255,7 @@ namespace WorkforceManager.UI.ViewModels
                 Detail.EmployeeCode == "—" ? null : Detail.EmployeeCode,
                 Detail.PhoneNumber == "—" ? null : Detail.PhoneNumber,
                 Detail.HireDateText == "—" ? null : DateTime.Parse(Detail.HireDateText),
-                Detail.SkillsNotes, Detail.HourlyRole);
+                Detail.SkillsNotes, Detail.HourlyRole, Detail.DailyWageEgp);
 
             if (dialog.ShowDialog() != true) return;
 
@@ -259,7 +265,7 @@ namespace WorkforceManager.UI.ViewModels
                 var mgmt = scope.ServiceProvider.GetRequiredService<WorkerManagementService>();
                 await mgmt.UpdateWorkerAsync(
                     SelectedWorker.WorkerId, dialog.WorkerName, dialog.EmployeeCode,
-                    dialog.PhoneNumber, dialog.HireDate, dialog.SkillsNotes, dialog.HourlyRole);
+                    dialog.PhoneNumber, dialog.HireDate, dialog.SkillsNotes, dialog.HourlyRole, dialog.DailyWageEgp);
                 await LoadAsync();
             }
             catch (Exception ex)
@@ -356,6 +362,12 @@ namespace WorkforceManager.UI.ViewModels
         /// <summary>نص الدور بالساعة للعرض في البروفايل (فاضي لعامل الإنتاج)</summary>
         public string HourlyRoleText { get; init; } = "";
 
+        /// <summary>سعر يومية العامل بالجنيه</summary>
+        public decimal DailyWageEgp { get; init; }
+
+        /// <summary>نص سعر اليومية للعرض في البروفايل</summary>
+        public string WageText { get; init; } = "";
+
         /// <summary>هل هو عامل بالساعة؟ (لإظهار شارة في البروفايل)</summary>
         public bool IsHourly => HourlyRole is not null;
 
@@ -390,6 +402,7 @@ namespace WorkforceManager.UI.ViewModels
         public decimal AbsenceDeduction { get; init; }
         public decimal PenaltyDeduction { get; init; }
         public decimal Net { get; init; }
+        public string WageText { get; init; } = "";
         public string BestMark { get; init; } = "";
         public string BreakdownText { get; init; } = "";
         public string PenaltiesText { get; init; } = "";
@@ -397,5 +410,6 @@ namespace WorkforceManager.UI.ViewModels
         /// <summary>هل فيه تفاصيل إنتاج/جزاءات تستحق العرض؟ (لإخفاء السطور الفاضية)</summary>
         public bool HasBreakdown => !string.IsNullOrEmpty(BreakdownText);
         public bool HasPenalties => !string.IsNullOrEmpty(PenaltiesText);
+        public bool HasWage => !string.IsNullOrEmpty(WageText);
     }
 }

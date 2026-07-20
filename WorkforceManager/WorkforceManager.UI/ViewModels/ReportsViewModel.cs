@@ -28,12 +28,13 @@ namespace WorkforceManager.UI.ViewModels
             _scopeFactory = scopeFactory;
         }
 
-        /// <summary>أول تحميل للشاشة: تقرير النهارده + كشف الأسبوع الحالي + رسم المنتجات</summary>
+        /// <summary>أول تحميل للشاشة: تقرير النهارده + كشف الأسبوع الحالي + رسم المنتجات + كشف أجور الشهر</summary>
         public async Task InitializeAsync()
         {
             await LoadDailyAsync();
             await LoadWeeklyAsync();
             await LoadChartAsync();
+            await LoadPayrollAsync();
         }
 
         // ======================= تبويب تقييم اليوم =======================
@@ -230,6 +231,85 @@ namespace WorkforceManager.UI.ViewModels
             ChartHasData = points.Count > 0;
         }
 
+        // ======================= تبويب كشف أجور الفترة (شهري) =======================
+
+        /// <summary>بداية الفترة (افتراضيًا أول الشهر الحالي)</summary>
+        [ObservableProperty]
+        private DateTime _payrollFrom = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+
+        /// <summary>نهاية الفترة (افتراضيًا النهاردة)</summary>
+        [ObservableProperty]
+        private DateTime _payrollTo = DateTime.Today;
+
+        [ObservableProperty]
+        private string _payrollTotalText = "";
+
+        public ObservableCollection<PayrollRow> PayrollRows { get; } = new();
+
+        [RelayCommand]
+        private Task RefreshPayrollAsync() => LoadPayrollAsync();
+
+        private async Task LoadPayrollAsync()
+        {
+            PeriodPayrollDto period;
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var payrollService = scope.ServiceProvider.GetRequiredService<PayrollService>();
+                period = await payrollService.GetPeriodPayrollAsync(PayrollFrom, PayrollTo);
+            }
+
+            PayrollRows.Clear();
+            var rank = 1;
+            foreach (var w in period.Workers)
+                PayrollRows.Add(PayrollRow.From(w, rank++));
+
+            var days = (PayrollTo.Date - PayrollFrom.Date).Days + 1;
+            PayrollTotalText = $"من {PayrollFrom:yyyy/MM/dd} إلى {PayrollTo:yyyy/MM/dd} ({days} يوم)   |   " +
+                $"إجمالي الأجور: {period.TotalWageEgp:N0} جنيه   |   إجمالي اليوميات: {period.TotalNetWorkdays:0.##}";
+        }
+
+        [RelayCommand]
+        private async Task ExportPayrollAsync()
+        {
+            if (PayrollRows.Count == 0)
+            {
+                MessageBox.Show("لا توجد بيانات في الفترة دي للتصدير", "تنبيه",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new SaveFileDialog
+            {
+                Title = "حفظ كشف أجور الفترة",
+                Filter = "Excel (*.xlsx)|*.xlsx",
+                FileName = $"كشف أجور {PayrollFrom:yyyy-MM-dd} إلى {PayrollTo:yyyy-MM-dd}.xlsx"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                PeriodPayrollDto period;
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var payrollService = scope.ServiceProvider.GetRequiredService<PayrollService>();
+                    var excelService = scope.ServiceProvider.GetRequiredService<WeeklyReportExcelService>();
+                    period = await payrollService.GetPeriodPayrollAsync(PayrollFrom, PayrollTo);
+                    excelService.ExportPeriodPayroll(period, dialog.FileName);
+                }
+
+                var open = MessageBox.Show(
+                    $"تم حفظ كشف الأجور:\n{dialog.FileName}\n\nفتح الملف الآن؟",
+                    "تم التصدير", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (open == MessageBoxResult.Yes)
+                    Process.Start(new ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"تعذر حفظ الملف:\n{ex.Message}", "خطأ في التصدير",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         // ======================= تصدير Excel =======================
 
         [RelayCommand]
@@ -351,6 +431,31 @@ namespace WorkforceManager.UI.ViewModels
         public string TotalText { get; init; } = "";
     }
 
+    /// <summary>سطر واحد في كشف أجور الفترة (شهري) — مرتّب بالأجر</summary>
+    public class PayrollRow
+    {
+        public int Rank { get; private init; }
+        public string WorkerName { get; private init; } = "";
+        public string EmployeeCode { get; private init; } = "";
+        public string TypeText { get; private init; } = "";
+        public int DaysWorked { get; private init; }
+        public decimal NetWorkdays { get; private init; }
+        public string DailyWageText { get; private init; } = "";
+        public string NetWageText { get; private init; } = "";
+
+        public static PayrollRow From(WorkerPayrollDto dto, int rank) => new()
+        {
+            Rank = rank,
+            WorkerName = dto.WorkerName,
+            EmployeeCode = dto.EmployeeCode ?? "—",
+            TypeText = dto.IsHourly ? "بالساعة" : "إنتاج",
+            DaysWorked = dto.DaysWorked,
+            NetWorkdays = dto.NetWorkdays,
+            DailyWageText = dto.DailyWageEgp > 0 ? $"{dto.DailyWageEgp:N0} ج" : "لم يُحدد",
+            NetWageText = dto.DailyWageEgp > 0 ? $"{dto.NetWageEgp:N0} ج" : "—"
+        };
+    }
+
     /// <summary>سطر واحد في كشف الأسبوع (مرتّب بصافي اليوميات)</summary>
     public class WeeklyReportRow
     {
@@ -367,6 +472,8 @@ namespace WorkforceManager.UI.ViewModels
         public decimal PenaltyDeduction { get; private init; }
         public decimal NetWorkdays { get; private init; }
         public string NetColor { get; private init; } = "#1F3864";
+        /// <summary>أجر الأسبوع بالجنيه للعرض (فاضي لو مفيش سعر يومية)</summary>
+        public string WageText { get; private init; } = "";
         public string BreakdownText { get; private init; } = "";
         public string PenaltiesText { get; private init; } = "";
 
@@ -389,6 +496,7 @@ namespace WorkforceManager.UI.ViewModels
             PenaltyDeduction = dto.PenaltyDeduction,
             NetWorkdays = dto.NetWorkdays,
             NetColor = dto.NetWorkdays < 0 ? "#C62828" : "#1F3864", // الصافي السالب أحمر
+            WageText = dto.DailyWageEgp > 0 ? $"{dto.NetWageEgp:N0} ج" : "—",
             BreakdownText = string.Join("، ",
                 dto.Breakdown.Select(b => $"{b.ProductName}/{b.StageName}: {b.PieceCount} قطعة ({b.Workdays} يومية)")),
             PenaltiesText = string.Join("، ",

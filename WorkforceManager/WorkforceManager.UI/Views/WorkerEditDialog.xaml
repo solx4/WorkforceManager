@@ -21,6 +21,11 @@
         <TextBlock Text="تاريخ الالتحاق" FontWeight="Bold" Margin="0,0,0,4" />
         <DatePicker x:Name="HireDatePicker" Margin="0,0,0,12" />
 
+        <TextBlock Text="سعر اليومية بالجنيه" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBox x:Name="WageBox" Padding="8,6" Margin="0,0,0,4" />
+        <TextBlock Text="الأجر = صافي اليوميات × السعر ده. سيبه 0 لحد ما تحدد سعر العامل."
+                   Style="{StaticResource HintText}" Margin="0,0,0,12" />
+
         <TextBlock Text="نوع الحساب" FontWeight="Bold" Margin="0,0,0,4" />
         <ComboBox x:Name="HourlyRoleBox" Padding="8,6" Margin="0,0,0,4"
                   DisplayMemberPath="Display" SelectedValuePath="Role" />

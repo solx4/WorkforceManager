@@ -109,7 +109,7 @@
                         <DataGridTextColumn Header="خصم غياب" Binding="{Binding AbsenceDeduction}" Width="80" />
                         <DataGridTextColumn Header="خصم جزاءات" Binding="{Binding PenaltyDeduction}" Width="90" />
                         <!-- الصافي بالخط العريض وبلونه (أحمر لو سالب) -->
-                        <DataGridTemplateColumn Header="الصافي" Width="80">
+                        <DataGridTemplateColumn Header="الصافي" Width="70">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding NetWorkdays}" Foreground="{Binding NetColor}"
@@ -117,6 +117,16 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <!-- الأجر بالجنيه -->
+                        <DataGridTextColumn Header="الأجر (ج)" Binding="{Binding WageText}" Width="90">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FontWeight" Value="Bold" />
+                                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                     </DataGrid.Columns>
                 </DataGrid>
                 </Border>
@@ -258,6 +268,86 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </TabItem>
+
+        <!-- ============ تبويب كشف الأجور (فترة مخصصة/شهري) ============ -->
+        <TabItem Header="  كشف الأجور 💵  ">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- اختيار الفترة + تصدير -->
+                <Border Grid.Row="0" Style="{StaticResource ToolbarCard}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Left" Text="من:" FontWeight="Bold"
+                                   VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <DatePicker DockPanel.Dock="Left" SelectedDate="{Binding PayrollFrom}" Width="150"
+                                    VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBlock DockPanel.Dock="Left" Text="إلى:" FontWeight="Bold"
+                                   VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <DatePicker DockPanel.Dock="Left" SelectedDate="{Binding PayrollTo}" Width="150"
+                                    VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <Button DockPanel.Dock="Left" Content="🔄 عرض" Command="{Binding RefreshPayrollCommand}"
+                                Style="{StaticResource GhostButton}" Margin="0,0,8,0" />
+                        <Button DockPanel.Dock="Left" Content="📊 تصدير Excel" Command="{Binding ExportPayrollCommand}"
+                                Style="{StaticResource SuccessButton}" />
+                        <TextBlock Text="{Binding PayrollTotalText}" HorizontalAlignment="Left"
+                                   Foreground="{StaticResource BrandBrush}" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="16,0,0,0" TextWrapping="Wrap" />
+                    </DockPanel>
+                </Border>
+
+                <TextBlock Grid.Row="1" Style="{StaticResource HintText}" FontSize="12" Margin="4,0,4,8"
+                           Text="الأجر = صافي اليوميات (إنتاج + ساعات − خصومات الغياب والجزاءات) × سعر يومية العامل. اختار من تاريخ لتاريخ (شهر مثلاً) وصدّره لحساب الرواتب." />
+
+                <!-- جدول الأجور -->
+                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="6">
+                    <Grid>
+                        <TextBlock Text="مفيش نشاط في الفترة دي — اختار فترة تانية أو سجّل إنتاج/شغل أول"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextMutedBrush}" FontSize="14">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PayrollRows.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <DataGrid ItemsSource="{Binding PayrollRows}"
+                                  Style="{StaticResource ModernDataGrid}"
+                                  AutoGenerateColumns="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="40" />
+                                <DataGridTextColumn Header="اسم العامل" Binding="{Binding WorkerName}" Width="*" />
+                                <DataGridTextColumn Header="الكود" Binding="{Binding EmployeeCode}" Width="70" />
+                                <DataGridTextColumn Header="النوع" Binding="{Binding TypeText}" Width="75" />
+                                <DataGridTextColumn Header="أيام العمل" Binding="{Binding DaysWorked}" Width="85" />
+                                <DataGridTextColumn Header="صافي اليوميات" Binding="{Binding NetWorkdays}" Width="105" />
+                                <DataGridTextColumn Header="سعر اليومية" Binding="{Binding DailyWageText}" Width="100" />
+                                <!-- الأجر النهائي بارز بالأخضر -->
+                                <DataGridTextColumn Header="الأجر بالجنيه" Binding="{Binding NetWageText}" Width="120">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Setter Property="FontSize" Value="14" />
+                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
                     </Grid>
                 </Border>
             </Grid>

@@ -120,6 +120,13 @@
                                 <Run Text="   التحق: " /><Run Text="{Binding HireDateText, Mode=OneWay}" />
                             </TextBlock>
 
+                            <!-- سعر اليومية بالجنيه -->
+                            <Border Background="{StaticResource SuccessBgBrush}" CornerRadius="6" Padding="8,3"
+                                    HorizontalAlignment="Right" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding WageText}" FontSize="12.5" FontWeight="SemiBold"
+                                           Foreground="{StaticResource SuccessBrush}" />
+                            </Border>
+
                             <!-- شارة العامل بالساعة (بتظهر بس لو ليه دور بالساعة) -->
                             <Border Background="{StaticResource WarnBgBrush}" CornerRadius="6" Padding="8,3"
                                     HorizontalAlignment="Right" Margin="0,0,0,8">
@@ -226,6 +233,19 @@
                                                     <Run Text="   خصم غياب: " /><Run Text="{Binding AbsenceDeduction, Mode=OneWay}" Foreground="#B00020" />
                                                     <Run Text="   خصم جزاءات: " /><Run Text="{Binding PenaltyDeduction, Mode=OneWay}" Foreground="#B00020" />
                                                     <Run Text="   الصافي: " /><Run Text="{Binding Net, Mode=OneWay}" FontWeight="Bold" Foreground="#1F3864" />
+                                                </TextBlock>
+                                                <!-- أجر الأسبوع بالجنيه (لو ليه سعر يومية) -->
+                                                <TextBlock FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}" Margin="0,2,0,0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasWage}" Value="False">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                    <Run Text="💵 الأجر: " /><Run Text="{Binding WageText, Mode=OneWay}" />
                                                 </TextBlock>
                                                 <!-- تفاصيل الإنتاج (لو فيه) -->
                                                 <TextBlock FontSize="11" Foreground="#777" TextWrapping="Wrap"
