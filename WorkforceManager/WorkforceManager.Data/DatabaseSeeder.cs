@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using WorkforceManager.Core.Models;
 using WorkforceManager.Data.Seed;
 
 namespace WorkforceManager.Data
@@ -6,7 +7,8 @@ namespace WorkforceManager.Data
     /// <summary>
     /// بيتشغل مرة واحدة بس، أول ما التطبيق يفتح ويلاقي قاعدة البيانات
     /// فاضية: بيزرع فيها بيانات العميل الحقيقية (17 منتج بمراحلها
-    /// وكوتاتها من Salem.xlsx، و46 عامل بأسمائهم من ملف اسماء الصنفرة).
+    /// وكوتاتها من Salem.xlsx، و46 عامل بأسمائهم من ملف اسماء الصنفرة،
+    /// وربط مهاراتهم الفعلي بالمراحل من WorkerSkillsSeed).
     /// لو قاعدة البيانات فيها بيانات بالفعل، بيتخطى العملية تمامًا
     /// (منعًا لتكرار البيانات في كل تشغيل).
     /// </summary>
@@ -31,6 +33,69 @@ namespace WorkforceManager.Data
 
             if (!hasProducts || !hasWorkers)
             {
+                await db.SaveChangesAsync();
+            }
+
+            // ربط المهارات بيعتمد على وجود المنتجات والعمال مع بعض —
+            // بيتشغل بس أول مرة (تركيب جديد) عشان ميتعارضش مع تعديلات
+            // المستخدم اليدوية اللاحقة على مهارات العمال من الشاشة
+            if (!hasProducts && !hasWorkers)
+            {
+                await SeedWorkerSkillLinksAsync(db);
+            }
+        }
+
+        /// <summary>
+        /// يربط مهارات العمال بمراحل الإنتاج من WorkerSkillsSeed —
+        /// Upsert آمن بيتخطى أي رابط موجود بالفعل، فينفع يتشغل أكتر من
+        /// مرة من غير تكرار (مفيد لتطبيقه على قاعدة بيانات موجودة فعلًا).
+        /// </summary>
+        public static async Task SeedWorkerSkillLinksAsync(AppDbContext db)
+        {
+            var links = WorkerSkillsSeed.BuildLinks();
+
+            var workersByCode = await db.Workers
+                .Where(w => w.EmployeeCode != null)
+                .ToDictionaryAsync(w => w.EmployeeCode!);
+
+            var stagesByProduct = (await db.ProductionStages.Include(s => s.Product).ToListAsync())
+                .ToLookup(s => s.Product.Name);
+
+            var existingPairs = (await db.WorkerSkills
+                    .Select(ws => new { ws.WorkerId, ws.ProductionStageId })
+                    .ToListAsync())
+                .Select(x => (x.WorkerId, x.ProductionStageId))
+                .ToHashSet();
+
+            var toAdd = new List<WorkerSkill>();
+            foreach (var (code, workerLinks) in links)
+            {
+                if (!workersByCode.TryGetValue(code, out var worker)) continue;
+
+                foreach (var link in workerLinks)
+                {
+                    var productStages = stagesByProduct[link.ProductName];
+                    var targetStages = link.StageName is null
+                        ? productStages.Where(s => link.Exclude == null || !link.Exclude.Contains(s.StageName))
+                        : productStages.Where(s => s.StageName == link.StageName);
+
+                    foreach (var stage in targetStages)
+                    {
+                        if (!existingPairs.Add((worker.Id, stage.Id))) continue; // موجود بالفعل أو مكرر داخليًا
+
+                        toAdd.Add(new WorkerSkill
+                        {
+                            WorkerId = worker.Id,
+                            ProductionStageId = stage.Id,
+                            Level = link.Level
+                        });
+                    }
+                }
+            }
+
+            if (toAdd.Count > 0)
+            {
+                await db.WorkerSkills.AddRangeAsync(toAdd);
                 await db.SaveChangesAsync();
             }
         }
