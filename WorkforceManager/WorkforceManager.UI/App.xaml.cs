@@ -37,6 +37,7 @@ namespace WorkforceManager.UI
                     services.AddScoped<IDailyProductionRepository, DailyProductionRepository>();
                     services.AddScoped<IAttendanceRepository, AttendanceRepository>();
                     services.AddScoped<IPenaltyRepository, PenaltyRepository>();
+                    services.AddScoped<IHourlyWorkLogRepository, HourlyWorkLogRepository>();
                     services.AddScoped<IGenericRepository<ProductionStage>, GenericRepository<ProductionStage>>();
                     services.AddScoped<IGenericRepository<WorkerSkill>, GenericRepository<WorkerSkill>>();
                     services.AddScoped<IGenericRepository<AppUser>, GenericRepository<AppUser>>();
@@ -51,6 +52,7 @@ namespace WorkforceManager.UI
                     services.AddScoped<ProductManagementService>();
                     services.AddScoped<ProductionFlowService>();
                     services.AddScoped<ProductionChartService>();
+                    services.AddScoped<HourlyWorkdayService>();
                     services.AddScoped<AuthService>();
                     // خدمة التصدير Singleton لأنها بدون حالة ولا بتلمس قاعدة البيانات
                     services.AddSingleton<WeeklyReportExcelService>();

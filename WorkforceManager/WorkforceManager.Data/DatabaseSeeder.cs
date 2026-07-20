@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using WorkforceManager.Core.Enums;
 using WorkforceManager.Core.Models;
 using WorkforceManager.Data.Seed;
 
@@ -43,6 +44,43 @@ namespace WorkforceManager.Data
             {
                 await SeedWorkerSkillLinksAsync(db);
             }
+
+            // الأدوار بالساعة للعمال الوصفيين — Upsert آمن (بيتخطى اللي متحدد
+            // نوعه بالفعل) فينفع يتشغل على قاعدة موجودة من غير ما يلمس تعديلات المستخدم
+            await SeedHourlyRolesAsync(db);
+        }
+
+        /// <summary>
+        /// يحدد الدور بالساعة للعمال الوصفيين (رص/جودة/تدريب) بناءً على
+        /// ملاحظاتهم النصية — للعمال اللي لسه مفيش لهم دور بالساعة محدد بس
+        /// (مبيلمسش أي عامل المستخدم حدد نوعه يدويًا).
+        /// </summary>
+        public static async Task SeedHourlyRolesAsync(AppDbContext db)
+        {
+            // بناخد بس العمال اللي مالهمش دور بالساعة لسه، ومالهمش مهارات إنتاج
+            // (عشان منحوّلش عامل إنتاج بالغلط لو ملاحظته فيها كلمة تدريب مثلًا)
+            var candidates = await db.Workers
+                .Where(w => w.HourlyRole == null && w.SkillsNotes != null && !w.Skills.Any())
+                .ToListAsync();
+
+            var changed = false;
+            foreach (var worker in candidates)
+            {
+                var notes = worker.SkillsNotes!;
+                HourlyRole? role = notes.Contains("رص") ? HourlyRole.Racking
+                    : notes.Contains("جوده") || notes.Contains("جودة") ? HourlyRole.Quality
+                    : notes.Contains("تدريب") ? HourlyRole.Training
+                    : null;
+
+                if (role is not null)
+                {
+                    worker.HourlyRole = role;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+                await db.SaveChangesAsync();
         }
 
         /// <summary>

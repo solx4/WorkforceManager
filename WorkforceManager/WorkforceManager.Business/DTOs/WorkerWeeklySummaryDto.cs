@@ -31,6 +31,17 @@ namespace WorkforceManager.Business.DTOs
         /// <summary>تفصيل الإنتاج حسب كل منتج/مرحلة اشتغل عليها خلال الأسبوع</summary>
         public List<StageBreakdownDto> Breakdown { get; set; } = new();
 
+        // ------- الشغل بالساعة (للعمال بالساعة) -------
+
+        /// <summary>هل هذا عامل بالساعة؟ (يوميّاته من الساعات مش من الإنتاج)</summary>
+        public bool IsHourly { get; set; }
+
+        /// <summary>عدد أيام الشغل المسجّلة بالساعة خلال الأسبوع</summary>
+        public int HourlyDaysWorked { get; set; }
+
+        /// <summary>إجمالي اليوميات من الشغل بالساعة خلال الأسبوع (داخلة في ProducedWorkdays)</summary>
+        public decimal HourlyWorkdays { get; set; }
+
         // ------- الحضور والغياب -------
 
         /// <summary>عدد أيام الحضور المسجّلة خلال الأسبوع</summary>

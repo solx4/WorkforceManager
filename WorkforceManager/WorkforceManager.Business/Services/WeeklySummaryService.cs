@@ -27,17 +27,20 @@ namespace WorkforceManager.Business.Services
         private readonly IAttendanceRepository _attendanceRepo;
         private readonly IPenaltyRepository _penaltyRepo;
         private readonly IWorkerRepository _workerRepo;
+        private readonly IHourlyWorkLogRepository _hourlyRepo;
 
         public WeeklySummaryService(
             IDailyProductionRepository productionRepo,
             IAttendanceRepository attendanceRepo,
             IPenaltyRepository penaltyRepo,
-            IWorkerRepository workerRepo)
+            IWorkerRepository workerRepo,
+            IHourlyWorkLogRepository hourlyRepo)
         {
             _productionRepo = productionRepo;
             _attendanceRepo = attendanceRepo;
             _penaltyRepo = penaltyRepo;
             _workerRepo = workerRepo;
+            _hourlyRepo = hourlyRepo;
         }
 
         /// <summary>
@@ -63,12 +66,13 @@ namespace WorkforceManager.Business.Services
         {
             var (weekStart, weekEnd) = GetWorkWeekRange(anyDateInWeek);
 
-            // تحميل كل بيانات الأسبوع مرة واحدة (3 استعلامات بس مهما كان عدد العمال)
+            // تحميل كل بيانات الأسبوع مرة واحدة (4 استعلامات بس مهما كان عدد العمال)
             var production = await _productionRepo.GetByRangeAsync(weekStart, weekEnd);
             var attendance = await _attendanceRepo.GetByRangeAsync(weekStart, weekEnd);
             var penalties = await _penaltyRepo.GetByRangeAsync(weekStart, weekEnd);
+            var hourly = await _hourlyRepo.GetByRangeAsync(weekStart, weekEnd);
 
-            return BuildTeamSummaryForWeek(weekStart, weekEnd, production, attendance, penalties);
+            return BuildTeamSummaryForWeek(weekStart, weekEnd, production, attendance, penalties, hourly);
         }
 
         /// <summary>
@@ -96,22 +100,24 @@ namespace WorkforceManager.Business.Services
             var (firstWeekStart, _) = GetWorkWeekRange(from);
             var (lastWeekStart, lastWeekEnd) = GetWorkWeekRange(to);
 
-            // تحميل الفترة كلها دفعة واحدة (3 استعلامات إجمالًا)
+            // تحميل الفترة كلها دفعة واحدة (4 استعلامات إجمالًا)
             var production = await _productionRepo.GetByRangeAsync(firstWeekStart, lastWeekEnd);
             var attendance = await _attendanceRepo.GetByRangeAsync(firstWeekStart, lastWeekEnd);
             var penalties = await _penaltyRepo.GetByRangeAsync(firstWeekStart, lastWeekEnd);
+            var hourly = await _hourlyRepo.GetByRangeAsync(firstWeekStart, lastWeekEnd);
 
             // تقسيم كل نوع بيانات على أسابيعه (بمفتاح = تاريخ بداية الأسبوع = الخميس)
             var productionByWeek = production.ToLookup(p => GetWorkWeekRange(p.Date).WeekStart);
             var attendanceByWeek = attendance.ToLookup(a => GetWorkWeekRange(a.Date).WeekStart);
             var penaltiesByWeek = penalties.ToLookup(p => GetWorkWeekRange(p.Date).WeekStart);
+            var hourlyByWeek = hourly.ToLookup(h => GetWorkWeekRange(h.Date).WeekStart);
 
             var history = new List<WorkerWeeklySummaryDto>();
             for (var cursor = firstWeekStart; cursor <= lastWeekStart; cursor = cursor.AddDays(7))
             {
                 var team = BuildTeamSummaryForWeek(
                     cursor, cursor.AddDays(6),
-                    productionByWeek[cursor], attendanceByWeek[cursor], penaltiesByWeek[cursor]);
+                    productionByWeek[cursor], attendanceByWeek[cursor], penaltiesByWeek[cursor], hourlyByWeek[cursor]);
 
                 // بناخد سطر العامل المطلوب بس من ملخص الأسبوع (لو ليه نشاط فيه)
                 var mine = team.FirstOrDefault(s => s.WorkerId == workerId);
@@ -134,16 +140,19 @@ namespace WorkforceManager.Business.Services
             DateTime weekStart, DateTime weekEnd,
             IEnumerable<DailyProduction> production,
             IEnumerable<Attendance> attendance,
-            IEnumerable<Penalty> penalties)
+            IEnumerable<Penalty> penalties,
+            IEnumerable<HourlyWorkLog> hourly)
         {
             var productionByWorker = production.ToLookup(p => p.WorkerId);
             var attendanceByWorker = attendance.ToLookup(a => a.WorkerId);
             var penaltiesByWorker = penalties.ToLookup(p => p.WorkerId);
+            var hourlyByWorker = hourly.ToLookup(h => h.WorkerId);
 
-            // كل العمال اللي ليهم أي نشاط في الأسبوع (إنتاج أو حضور أو جزاء)
+            // كل العمال اللي ليهم أي نشاط في الأسبوع (إنتاج أو حضور أو جزاء أو شغل بالساعة)
             var workerIds = productionByWorker.Select(g => g.Key)
                 .Concat(attendanceByWorker.Select(g => g.Key))
                 .Concat(penaltiesByWorker.Select(g => g.Key))
+                .Concat(hourlyByWorker.Select(g => g.Key))
                 .Distinct();
 
             var summaries = new List<WorkerWeeklySummaryDto>();
@@ -152,15 +161,17 @@ namespace WorkforceManager.Business.Services
                 var workerProduction = productionByWorker[workerId].ToList();
                 var workerAttendance = attendanceByWorker[workerId].ToList();
                 var workerPenalties = penaltiesByWorker[workerId].ToList();
+                var workerHourly = hourlyByWorker[workerId].ToList();
 
                 // اسم العامل من أي سجل متاح (كلهم محمّلين بـ Include للـ Worker)
                 var workerRef = workerProduction.FirstOrDefault()?.Worker
                     ?? workerAttendance.FirstOrDefault()?.Worker
+                    ?? workerHourly.FirstOrDefault()?.Worker
                     ?? workerPenalties.First().Worker;
 
                 summaries.Add(BuildWorkerSummary(
                     workerId, workerRef, weekStart, weekEnd,
-                    workerProduction, workerAttendance, workerPenalties));
+                    workerProduction, workerAttendance, workerPenalties, workerHourly));
             }
 
             // الترتيب بصافي اليوميات (بعد كل الخصومات) — ده أساس تقييم الأسبوع
@@ -180,9 +191,14 @@ namespace WorkforceManager.Business.Services
             int workerId, Worker workerRef, DateTime weekStart, DateTime weekEnd,
             List<DailyProduction> workerProduction,
             List<Attendance> workerAttendance,
-            List<Penalty> workerPenalties)
+            List<Penalty> workerPenalties,
+            List<HourlyWorkLog> workerHourly)
         {
             var absentWithoutPermission = workerAttendance.Count(a => a.Status == AttendanceStatus.AbsentWithoutPermission);
+
+            // يوميات الشغل بالساعة (للعمال بالساعة) — بتتجمع مع يوميات الإنتاج
+            // في ProducedWorkdays عشان تدخل في الصافي والأجر زي أي يوميات
+            var hourlyWorkdays = workerHourly.Sum(h => h.WorkdaysCredited);
 
             return new WorkerWeeklySummaryDto
             {
@@ -192,7 +208,11 @@ namespace WorkforceManager.Business.Services
                 WeekStart = weekStart,
                 WeekEnd = weekEnd,
 
-                ProducedWorkdays = workerProduction.Sum(p => p.WorkdaysCompleted),
+                IsHourly = workerRef.IsHourly,
+                HourlyDaysWorked = workerHourly.Count,
+                HourlyWorkdays = hourlyWorkdays,
+
+                ProducedWorkdays = workerProduction.Sum(p => p.WorkdaysCompleted) + hourlyWorkdays,
                 TotalPieces = workerProduction.Sum(p => p.PieceCount),
                 // تفصيل الإنتاج مجمّع حسب المرحلة (نفس المرحلة ممكن تتكرر في كذا يوم خلال الأسبوع)
                 Breakdown = workerProduction
