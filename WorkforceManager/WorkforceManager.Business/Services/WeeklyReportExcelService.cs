@@ -204,5 +204,152 @@ namespace WorkforceManager.Business.Services
 
             workbook.SaveAs(filePath);
         }
+
+        /// <summary>تصدير التقرير العام للإنتاج (ملخص + بالمنتج/المرحلة + بالعامل) لملف Excel</summary>
+        public void ExportGeneralReport(GeneralProductionReportDto report, string filePath)
+        {
+            using var workbook = new XLWorkbook();
+
+            // ---- ورقة: بالمنتج والمرحلة ----
+            var s1 = workbook.Worksheets.Add("بالمنتج والمرحلة");
+            s1.RightToLeft = true;
+            s1.Range(1, 1, 1, 4).Merge();
+            s1.Cell(1, 1).Value = $"تقرير الإنتاج العام: من {report.From:yyyy/MM/dd} إلى {report.To:yyyy/MM/dd}";
+            s1.Cell(1, 1).Style.Font.SetBold().Font.SetFontSize(14);
+            s1.Cell(1, 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+            // ملخص إجمالي
+            s1.Cell(2, 1).Value =
+                $"القطع المكتملة: {report.TotalCompletedPieces:N0}   |   اليوميات: {report.TotalWorkdays:0.##}   |   العمال: {report.WorkersCount}   |   أيام الإنتاج: {report.ProductionDays}";
+            s1.Range(2, 1, 2, 4).Merge();
+            s1.Cell(2, 1).Style.Font.SetBold().Font.SetFontColor(XLColor.FromHtml("#1F3864"));
+
+            WriteHeaders(s1, 3, "المنتج", "المرحلة", "القطع", "اليوميات");
+            var r = 4;
+            foreach (var row in report.ByProductStage)
+            {
+                s1.Cell(r, 1).Value = row.ProductName;
+                s1.Cell(r, 2).Value = row.IsLastStage ? $"{row.StageName} (مكتمل)" : row.StageName;
+                s1.Cell(r, 3).Value = row.Pieces;
+                s1.Cell(r, 4).Value = row.Workdays;
+                if ((r - 4) % 2 == 1) s1.Range(r, 1, r, 4).Style.Fill.SetBackgroundColor(StripeColor);
+                r++;
+            }
+            FinishSheet(s1, 3, r - 1, 4);
+
+            // ---- ورقة: بالعامل ----
+            var s2 = workbook.Worksheets.Add("بالعامل");
+            s2.RightToLeft = true;
+            WriteHeaders(s2, 1, "الترتيب", "اسم العامل", "الكود", "النوع", "القطع", "اليوميات");
+            r = 2;
+            for (var i = 0; i < report.ByWorker.Count; i++)
+            {
+                var w = report.ByWorker[i];
+                s2.Cell(r, 1).Value = i + 1;
+                s2.Cell(r, 2).Value = w.WorkerName;
+                s2.Cell(r, 3).Value = w.EmployeeCode ?? "—";
+                s2.Cell(r, 4).Value = w.IsHourly ? "بالساعة" : "إنتاج";
+                s2.Cell(r, 5).Value = w.TotalPieces;
+                s2.Cell(r, 6).Value = w.TotalWorkdays;
+                if (i % 2 == 1) s2.Range(r, 1, r, 6).Style.Fill.SetBackgroundColor(StripeColor);
+                r++;
+            }
+            FinishSheet(s2, 1, r - 1, 6);
+
+            workbook.SaveAs(filePath);
+        }
+
+        /// <summary>تصدير تقرير عامل معين (الإنتاج + الحضور + الأجر) لملف Excel</summary>
+        public void ExportWorkerReport(WorkerProductionReportDto report, string filePath)
+        {
+            using var workbook = new XLWorkbook();
+            var sheet = workbook.Worksheets.Add("تقرير العامل");
+            sheet.RightToLeft = true;
+
+            sheet.Range(1, 1, 1, 4).Merge();
+            sheet.Cell(1, 1).Value = $"تقرير العامل: {report.WorkerName} ({report.EmployeeCode ?? "—"})";
+            sheet.Cell(1, 1).Style.Font.SetBold().Font.SetFontSize(14);
+            sheet.Cell(1, 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+            sheet.Range(2, 1, 2, 4).Merge();
+            sheet.Cell(2, 1).Value = $"الفترة: من {report.From:yyyy/MM/dd} إلى {report.To:yyyy/MM/dd}   |   النوع: {report.TypeText}";
+            sheet.Cell(2, 1).Style.Font.SetBold();
+
+            // ملخص
+            var row = 4;
+            void Info(string label, string val)
+            {
+                sheet.Cell(row, 1).Value = label;
+                sheet.Cell(row, 1).Style.Font.SetBold();
+                sheet.Cell(row, 2).Value = val;
+                row++;
+            }
+            Info("إجمالي القطع", $"{report.TotalPieces:N0}");
+            Info("اليوميات المنتجة", $"{report.ProducedWorkdays:0.##}");
+            Info("أيام حضور", $"{report.PresentDays}");
+            Info("غياب بإذن", $"{report.AbsentWithPermissionDays}");
+            Info("غياب بدون إذن", $"{report.AbsentWithoutPermissionDays}  (خصم {report.AbsenceDeduction})");
+            Info("خصم الجزاءات", $"{report.PenaltyDeduction}");
+            Info("صافي اليوميات", $"{report.NetWorkdays:0.##}");
+            if (report.DailyWageEgp > 0)
+            {
+                Info("سعر اليومية", $"{report.DailyWageEgp:N0} ج");
+                Info("الأجر بالجنيه", $"{report.NetWageEgp:N0} ج");
+            }
+
+            // تفصيل الإنتاج بالمنتج/المرحلة
+            row += 1;
+            WriteHeaders(sheet, row, "المنتج", "المرحلة", "القطع", "اليوميات");
+            var start = row; row++;
+            foreach (var ps in report.ByProductStage)
+            {
+                sheet.Cell(row, 1).Value = ps.ProductName;
+                sheet.Cell(row, 2).Value = ps.StageName;
+                sheet.Cell(row, 3).Value = ps.Pieces;
+                sheet.Cell(row, 4).Value = ps.Workdays;
+                row++;
+            }
+            FinishSheet(sheet, start, row - 1, 4);
+
+            // تفصيل باليوم
+            row += 1;
+            WriteHeaders(sheet, row, "التاريخ", "القطع", "اليوميات", "التفصيل");
+            start = row; row++;
+            foreach (var d in report.ByDay)
+            {
+                sheet.Cell(row, 1).Value = d.Date.ToString("yyyy/MM/dd");
+                sheet.Cell(row, 2).Value = d.Pieces;
+                sheet.Cell(row, 3).Value = d.Workdays;
+                sheet.Cell(row, 4).Value = d.Detail;
+                row++;
+            }
+            FinishSheet(sheet, start, row - 1, 4);
+
+            sheet.Columns().AdjustToContents();
+            sheet.Column(4).Width = Math.Max(sheet.Column(4).Width, 30);
+            workbook.SaveAs(filePath);
+        }
+
+        // ------- مساعدات تنسيق مشتركة -------
+
+        private static void WriteHeaders(ClosedXML.Excel.IXLWorksheet sheet, int rowIndex, params string[] headers)
+        {
+            for (var c = 0; c < headers.Length; c++)
+            {
+                var cell = sheet.Cell(rowIndex, c + 1);
+                cell.Value = headers[c];
+                cell.Style.Font.SetBold().Font.SetFontColor(XLColor.White);
+                cell.Style.Fill.SetBackgroundColor(HeaderColor);
+                cell.Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+            }
+        }
+
+        private static void FinishSheet(ClosedXML.Excel.IXLWorksheet sheet, int headerRow, int lastRow, int cols)
+        {
+            if (lastRow < headerRow) return;
+            var table = sheet.Range(headerRow, 1, lastRow, cols);
+            table.Style.Border.SetOutsideBorder(XLBorderStyleValues.Medium);
+            table.Style.Border.SetInsideBorder(XLBorderStyleValues.Thin);
+            table.Style.Alignment.SetVertical(XLAlignmentVerticalValues.Center);
+            sheet.Columns().AdjustToContents();
+        }
     }
 }

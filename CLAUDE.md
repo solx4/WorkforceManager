@@ -55,7 +55,7 @@ Core  <----------------------- UI
 - **WorkforceManager.Business** — all business rules live here, nowhere else (especially not in UI code):
   `WorkdayCalculationService`, `PerformanceEvaluationService`, `AttendanceService`, `ProductionFlowService`,
   `WeeklySummaryService`, `PenaltyService`, `WorkerManagementService`, `ProductManagementService`,
-  `AuthService`, `WeeklyReportExcelService`, plus their DTOs in `DTOs/`.
+  `ProductionReportService`, `AuthService`, `WeeklyReportExcelService`, plus their DTOs in `DTOs/`.
 - **WorkforceManager.UI** — WPF, MVVM (CommunityToolkit.Mvvm) + MaterialDesignThemes. `App.xaml.cs` wires
   up DI via `Microsoft.Extensions.Hosting`'s `Host` (`AppHost`) — this is the single place new
   repositories/services/views get registered. `WorkersView` (+ `WorkersViewModel`, `WorkerEditDialog`) is
@@ -72,7 +72,13 @@ Core  <----------------------- UI
   average) + weekly sheet tab (net-workdays ranking, week navigation, Excel export via
   `WeeklyReportExcelService`/ClosedXML in Business) + products chart tab (weekly COMPLETED pieces per
   product = pieces on each product's last stage only, via `ProductionChartService`; bars are native WPF
-  elements, no chart library; time axis forced LTR). `ProductsView` is implemented: products list with
+  elements, no chart library; time axis forced LTR) + "تقرير الإنتاج" general-report tab (department
+  summary + by product/stage + by worker) + "تقرير عامل" per-worker tab (production detail by stage and
+  by day + attendance + wage/penalties). Both report tabs share the same period model: quick buttons
+  (اليوم/الأسبوع/الشهر) + a free from/to custom range (any span works, e.g. day 1→20), all served by
+  `ProductionReportService.GetGeneralReportAsync(from,to)`/`GetWorkerReportAsync(workerId,from,to)`
+  (completed pieces = last-stage-per-product, same rule as the chart) with Excel export via
+  `WeeklyReportExcelService.ExportGeneralReport`/`ExportWorkerReport`. `ProductsView` is implemented: products list with
   search/inactive filter, stages panel per product with quota management (`ProductManagementService` —
   stage names unique per product, quota edits only affect future entries thanks to the snapshot).
   All four sidebar screens are implemented. Navigation uses `Checked` (not `Click`) on the sidebar

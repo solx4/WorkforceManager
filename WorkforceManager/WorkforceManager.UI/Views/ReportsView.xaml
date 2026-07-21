@@ -352,5 +352,201 @@
                 </Border>
             </Grid>
         </TabItem>
+
+        <!-- ============ تبويب التقرير العام للإنتاج ============ -->
+        <TabItem Header="  تقرير الإنتاج 📋  ">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- اختيار المدة: أزرار سريعة + مدى مخصص + تصدير -->
+                <Border Grid.Row="0" Style="{StaticResource ToolbarCard}">
+                    <DockPanel LastChildFill="False">
+                        <Button DockPanel.Dock="Left" Content="اليوم" Command="{Binding GeneralPeriodCommand}" CommandParameter="day"
+                                Style="{StaticResource GhostButton}" Margin="0,0,6,0" />
+                        <Button DockPanel.Dock="Left" Content="الأسبوع" Command="{Binding GeneralPeriodCommand}" CommandParameter="week"
+                                Style="{StaticResource GhostButton}" Margin="0,0,6,0" />
+                        <Button DockPanel.Dock="Left" Content="الشهر" Command="{Binding GeneralPeriodCommand}" CommandParameter="month"
+                                Style="{StaticResource GhostButton}" Margin="0,0,16,0" />
+                        <TextBlock DockPanel.Dock="Left" Text="من:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <DatePicker DockPanel.Dock="Left" SelectedDate="{Binding GeneralFrom}" Width="140" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <TextBlock DockPanel.Dock="Left" Text="إلى:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <DatePicker DockPanel.Dock="Left" SelectedDate="{Binding GeneralTo}" Width="140" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <Button DockPanel.Dock="Left" Content="🔄 عرض" Command="{Binding RefreshGeneralCommand}"
+                                Style="{StaticResource GhostButton}" Margin="0,0,8,0" />
+                        <Button DockPanel.Dock="Left" Content="📊 تصدير Excel" Command="{Binding ExportGeneralCommand}"
+                                Style="{StaticResource SuccessButton}" />
+                    </DockPanel>
+                </Border>
+
+                <!-- سطر الملخص الإجمالي للقسم -->
+                <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,8" Padding="12,8">
+                    <TextBlock Text="{Binding GeneralSummaryText}" Foreground="{StaticResource BrandBrush}"
+                               FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap" />
+                </Border>
+
+                <!-- جدولين جنب بعض: بالمنتج/المرحلة + بالعامل -->
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- الإنتاج بالمنتج والمرحلة -->
+                    <Border Grid.Column="0" Style="{StaticResource Card}" Padding="6" Margin="0,0,5,0">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="الإنتاج حسب المنتج والمرحلة" FontWeight="Bold"
+                                       Foreground="{StaticResource BrandBrush}" Margin="4,2,4,6" />
+                            <DataGrid ItemsSource="{Binding GeneralByProductStage}"
+                                      Style="{StaticResource ModernDataGrid}"
+                                      AutoGenerateColumns="False" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="المنتج" Binding="{Binding ProductName}" Width="*" />
+                                    <DataGridTextColumn Header="المرحلة" Binding="{Binding StageDisplay}" Width="*" />
+                                    <DataGridTextColumn Header="القطع" Binding="{Binding Pieces}" Width="70" />
+                                    <DataGridTextColumn Header="اليوميات" Binding="{Binding Workdays}" Width="80" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- الإنتاج بالعامل -->
+                    <Border Grid.Column="1" Style="{StaticResource Card}" Padding="6" Margin="5,0,0,0">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="الإنتاج حسب العامل" FontWeight="Bold"
+                                       Foreground="{StaticResource BrandBrush}" Margin="4,2,4,6" />
+                            <DataGrid ItemsSource="{Binding GeneralByWorker}"
+                                      Style="{StaticResource ModernDataGrid}"
+                                      AutoGenerateColumns="False" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="40" />
+                                    <DataGridTextColumn Header="اسم العامل" Binding="{Binding WorkerName}" Width="*" />
+                                    <DataGridTextColumn Header="النوع" Binding="{Binding TypeText}" Width="90" />
+                                    <DataGridTextColumn Header="القطع" Binding="{Binding TotalPieces}" Width="85" />
+                                    <DataGridTextColumn Header="اليوميات" Binding="{Binding TotalWorkdays}" Width="85" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </TabItem>
+
+        <!-- ============ تبويب تقرير عامل معيّن ============ -->
+        <TabItem Header="  تقرير عامل 👤  ">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- اختيار العامل + المدة + تصدير -->
+                <Border Grid.Row="0" Style="{StaticResource ToolbarCard}">
+                    <DockPanel LastChildFill="False">
+                        <TextBlock DockPanel.Dock="Left" Text="العامل:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding Workers}" SelectedItem="{Binding SelectedWorker}"
+                                  DisplayMemberPath="Display" Width="200" VerticalAlignment="Center" Margin="0,0,16,0" />
+                        <Button DockPanel.Dock="Left" Content="اليوم" Command="{Binding WorkerPeriodCommand}" CommandParameter="day"
+                                Style="{StaticResource GhostButton}" Margin="0,0,6,0" />
+                        <Button DockPanel.Dock="Left" Content="الأسبوع" Command="{Binding WorkerPeriodCommand}" CommandParameter="week"
+                                Style="{StaticResource GhostButton}" Margin="0,0,6,0" />
+                        <Button DockPanel.Dock="Left" Content="الشهر" Command="{Binding WorkerPeriodCommand}" CommandParameter="month"
+                                Style="{StaticResource GhostButton}" Margin="0,0,16,0" />
+                        <TextBlock DockPanel.Dock="Left" Text="من:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <DatePicker DockPanel.Dock="Left" SelectedDate="{Binding WorkerFrom}" Width="130" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <TextBlock DockPanel.Dock="Left" Text="إلى:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <DatePicker DockPanel.Dock="Left" SelectedDate="{Binding WorkerTo}" Width="130" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <Button DockPanel.Dock="Left" Content="🔄 عرض" Command="{Binding RefreshWorkerCommand}"
+                                Style="{StaticResource GhostButton}" Margin="0,0,8,0" />
+                        <Button DockPanel.Dock="Left" Content="📊 تصدير Excel" Command="{Binding ExportWorkerCommand}"
+                                Style="{StaticResource SuccessButton}" />
+                    </DockPanel>
+                </Border>
+
+                <!-- ملخص العامل: العنوان + الإنتاج/الحضور + الأجر -->
+                <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,8" Padding="12,8">
+                    <StackPanel>
+                        <TextBlock Text="{Binding WorkerReportHeader}" FontWeight="Bold" FontSize="14"
+                                   Foreground="{StaticResource BrandBrush}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding WorkerProductionText}" FontSize="12.5" Foreground="#444"
+                                   TextWrapping="Wrap" Margin="0,5,0,0" Visibility="{Binding HasWorkerReport, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Text="{Binding WorkerWageText}" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{StaticResource SuccessBrush}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Visibility="{Binding HasWorkerReport, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- التفاصيل: إنتاج بالمرحلة + إنتاج باليوم + الجزاءات -->
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1.3*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- يسار: إنتاج بالمرحلة + الجزاءات -->
+                    <Grid Grid.Column="0" Margin="0,0,5,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Style="{StaticResource Card}" Padding="6">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="الإنتاج حسب المرحلة" FontWeight="Bold"
+                                           Foreground="{StaticResource BrandBrush}" Margin="4,2,4,6" />
+                                <DataGrid ItemsSource="{Binding WorkerByProductStage}"
+                                          Style="{StaticResource ModernDataGrid}"
+                                          AutoGenerateColumns="False" IsReadOnly="True">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="المنتج" Binding="{Binding ProductName}" Width="*" />
+                                        <DataGridTextColumn Header="المرحلة" Binding="{Binding StageDisplay}" Width="*" />
+                                        <DataGridTextColumn Header="القطع" Binding="{Binding Pieces}" Width="85" />
+                                        <DataGridTextColumn Header="اليوميات" Binding="{Binding Workdays}" Width="85" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="6" Margin="0,10,0,0" MaxHeight="180">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="الجزاءات" FontWeight="Bold"
+                                           Foreground="{StaticResource DangerBrush}" Margin="4,2,4,6" />
+                                <DataGrid ItemsSource="{Binding WorkerPenalties}"
+                                          Style="{StaticResource ModernDataGrid}"
+                                          AutoGenerateColumns="False" IsReadOnly="True">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="التاريخ" Binding="{Binding DateText}" Width="100" />
+                                        <DataGridTextColumn Header="السبب" Binding="{Binding Reason}" Width="*" />
+                                        <DataGridTextColumn Header="الخصم" Binding="{Binding DeductionName}" Width="90" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- يمين: إنتاج يوم بيوم -->
+                    <Border Grid.Column="1" Style="{StaticResource Card}" Padding="6" Margin="5,0,0,0">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="الإنتاج يوم بيوم" FontWeight="Bold"
+                                       Foreground="{StaticResource BrandBrush}" Margin="4,2,4,6" />
+                            <DataGrid ItemsSource="{Binding WorkerByDay}"
+                                      Style="{StaticResource ModernDataGrid}"
+                                      AutoGenerateColumns="False" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="التاريخ" Binding="{Binding DateText}" Width="160" />
+                                    <DataGridTextColumn Header="القطع" Binding="{Binding Pieces}" Width="85" />
+                                    <DataGridTextColumn Header="اليوميات" Binding="{Binding Workdays}" Width="85" />
+                                    <DataGridTextColumn Header="التفصيل" Binding="{Binding Detail}" Width="*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </TabItem>
     </TabControl>
 </UserControl>

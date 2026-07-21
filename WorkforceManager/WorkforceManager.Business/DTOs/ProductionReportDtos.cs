@@ -1,0 +1,103 @@
+namespace WorkforceManager.Business.DTOs
+{
+    /// <summary>سطر إنتاج مرحلة داخل التقارير: منتج/مرحلة بعدد القطع واليوميات</summary>
+    public class ProductStageProductionDto
+    {
+        public string ProductName { get; init; } = string.Empty;
+        public string StageName { get; init; } = string.Empty;
+        public int SortOrder { get; init; }
+        public int Pieces { get; init; }
+        public decimal Workdays { get; init; }
+
+        /// <summary>هل دي آخر مرحلة للمنتج؟ (القطع عليها = إنتاج مكتمل خرج من الخط)</summary>
+        public bool IsLastStage { get; init; }
+    }
+
+    /// <summary>ملخص إنتاج عامل داخل التقرير العام</summary>
+    public class WorkerProductionSummaryDto
+    {
+        public int WorkerId { get; init; }
+        public string WorkerName { get; init; } = string.Empty;
+        public string? EmployeeCode { get; init; }
+        public bool IsHourly { get; init; }
+        public int TotalPieces { get; init; }
+        public decimal TotalWorkdays { get; init; }
+    }
+
+    /// <summary>
+    /// التقرير العام للإنتاج عن فترة [from, to]: ملخص إجمالي للقسم +
+    /// تفصيل بالمنتج/المرحلة + تفصيل بالعامل.
+    /// </summary>
+    public class GeneralProductionReportDto
+    {
+        public DateTime From { get; init; }
+        public DateTime To { get; init; }
+
+        // ------- الملخص الإجمالي -------
+        /// <summary>إجمالي القطع المكتملة (على آخر مرحلة لكل منتج) — الإنتاج اللي خرج فعلاً</summary>
+        public int TotalCompletedPieces { get; init; }
+
+        /// <summary>إجمالي اليوميات المنتجة في الفترة (كل المراحل + شغل الساعة)</summary>
+        public decimal TotalWorkdays { get; init; }
+
+        /// <summary>عدد العمال اللي اشتغلوا في الفترة</summary>
+        public int WorkersCount { get; init; }
+
+        /// <summary>عدد الأيام اللي فيها إنتاج فعلي</summary>
+        public int ProductionDays { get; init; }
+
+        // ------- التفصيل -------
+        public List<ProductStageProductionDto> ByProductStage { get; init; } = new();
+        public List<WorkerProductionSummaryDto> ByWorker { get; init; } = new();
+    }
+
+    /// <summary>إنتاج يوم واحد في تقرير العامل</summary>
+    public class WorkerDayProductionDto
+    {
+        public DateTime Date { get; init; }
+        public int Pieces { get; init; }
+        public decimal Workdays { get; init; }
+
+        /// <summary>تفصيل اليوم (المنتجات/المراحل أو شغل الساعة) كنص</summary>
+        public string Detail { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// تقرير عامل معين عن فترة [from, to]: إنتاجه بالتفصيل (بالمنتج/المرحلة
+    /// وباليوم) + الحضور والغياب + الأجر والجزاءات.
+    /// </summary>
+    public class WorkerProductionReportDto
+    {
+        public int WorkerId { get; init; }
+        public string WorkerName { get; init; } = string.Empty;
+        public string? EmployeeCode { get; init; }
+        public bool IsHourly { get; init; }
+        public string TypeText { get; init; } = string.Empty;
+        public decimal DailyWageEgp { get; init; }
+
+        public DateTime From { get; init; }
+        public DateTime To { get; init; }
+
+        // ------- الإنتاج -------
+        public int TotalPieces { get; init; }
+        public decimal ProducedWorkdays { get; init; }
+        public List<ProductStageProductionDto> ByProductStage { get; init; } = new();
+        public List<WorkerDayProductionDto> ByDay { get; init; } = new();
+
+        // ------- الحضور والغياب -------
+        public int PresentDays { get; init; }
+        public int AbsentWithPermissionDays { get; init; }
+        public int AbsentWithoutPermissionDays { get; init; }
+        public decimal AbsenceDeduction { get; init; }
+
+        // ------- الأجر والجزاءات -------
+        public decimal PenaltyDeduction { get; init; }
+        public List<PenaltySummaryDto> Penalties { get; init; } = new();
+
+        /// <summary>صافي يوميات الفترة = المنتج − خصم الغياب − خصم الجزاءات</summary>
+        public decimal NetWorkdays => ProducedWorkdays - AbsenceDeduction - PenaltyDeduction;
+
+        /// <summary>الأجر بالجنيه = الصافي × سعر اليومية</summary>
+        public decimal NetWageEgp => NetWorkdays * DailyWageEgp;
+    }
+}

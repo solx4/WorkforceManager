@@ -8,6 +8,7 @@ using Microsoft.Win32;
 using WorkforceManager.Business.DTOs;
 using WorkforceManager.Business.Services;
 using WorkforceManager.Core.Enums;
+using WorkforceManager.Core.Interfaces;
 
 namespace WorkforceManager.UI.ViewModels
 {
@@ -28,13 +29,27 @@ namespace WorkforceManager.UI.ViewModels
             _scopeFactory = scopeFactory;
         }
 
-        /// <summary>أول تحميل للشاشة: تقرير النهارده + كشف الأسبوع الحالي + رسم المنتجات + كشف أجور الشهر</summary>
+        /// <summary>أول تحميل للشاشة: تقرير النهارده + كشف الأسبوع الحالي + رسم المنتجات + كشف أجور الشهر + التقرير العام + قائمة العمال</summary>
         public async Task InitializeAsync()
         {
             await LoadDailyAsync();
             await LoadWeeklyAsync();
             await LoadChartAsync();
             await LoadPayrollAsync();
+            await LoadWorkersListAsync();
+            await LoadGeneralReportAsync();
+        }
+
+        /// <summary>حساب مدى التاريخ للأزرار السريعة (اليوم/الأسبوع/الشهر)</summary>
+        private static (DateTime from, DateTime to) ResolveQuickPeriod(string period)
+        {
+            var today = DateTime.Today;
+            return period switch
+            {
+                "week" => WeeklySummaryService.GetWorkWeekRange(today), // أسبوع العمل: خميس → أربع
+                "month" => (new DateTime(today.Year, today.Month, 1), today), // من أول الشهر لليوم
+                _ => (today, today) // اليوم
+            };
         }
 
         // ======================= تبويب تقييم اليوم =======================
@@ -310,6 +325,241 @@ namespace WorkforceManager.UI.ViewModels
             }
         }
 
+        // ======================= تبويب التقرير العام للإنتاج =======================
+
+        /// <summary>بداية فترة التقرير العام (افتراضيًا أول الشهر)</summary>
+        [ObservableProperty]
+        private DateTime _generalFrom = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+
+        /// <summary>نهاية فترة التقرير العام (افتراضيًا النهاردة)</summary>
+        [ObservableProperty]
+        private DateTime _generalTo = DateTime.Today;
+
+        /// <summary>سطر الملخص الإجمالي للقسم فوق الجداول</summary>
+        [ObservableProperty]
+        private string _generalSummaryText = "";
+
+        /// <summary>تفصيل الإنتاج بالمنتج/المرحلة</summary>
+        public ObservableCollection<GeneralStageRow> GeneralByProductStage { get; } = new();
+
+        /// <summary>تفصيل الإنتاج بالعامل (مرتّب باليوميات)</summary>
+        public ObservableCollection<GeneralWorkerRow> GeneralByWorker { get; } = new();
+
+        [RelayCommand]
+        private Task RefreshGeneralAsync() => LoadGeneralReportAsync();
+
+        /// <summary>زر سريع (اليوم/الأسبوع/الشهر) يضبط المدى ويعيد التحميل</summary>
+        [RelayCommand]
+        private Task GeneralPeriodAsync(string period)
+        {
+            (GeneralFrom, GeneralTo) = ResolveQuickPeriod(period);
+            return LoadGeneralReportAsync();
+        }
+
+        private async Task LoadGeneralReportAsync()
+        {
+            GeneralProductionReportDto report;
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var service = scope.ServiceProvider.GetRequiredService<ProductionReportService>();
+                report = await service.GetGeneralReportAsync(GeneralFrom, GeneralTo);
+            }
+
+            GeneralByProductStage.Clear();
+            foreach (var s in report.ByProductStage)
+                GeneralByProductStage.Add(GeneralStageRow.From(s));
+
+            GeneralByWorker.Clear();
+            var rank = 1;
+            foreach (var w in report.ByWorker)
+                GeneralByWorker.Add(GeneralWorkerRow.From(w, rank++));
+
+            var days = (GeneralTo.Date - GeneralFrom.Date).Days + 1;
+            GeneralSummaryText =
+                $"من {report.From:yyyy/MM/dd} إلى {report.To:yyyy/MM/dd} ({days} يوم)   |   " +
+                $"قطع مكتملة: {report.TotalCompletedPieces:N0}   |   إجمالي اليوميات: {report.TotalWorkdays:0.##}   |   " +
+                $"عدد العمال: {report.WorkersCount}   |   أيام الإنتاج: {report.ProductionDays}";
+        }
+
+        [RelayCommand]
+        private async Task ExportGeneralAsync()
+        {
+            if (GeneralByProductStage.Count == 0 && GeneralByWorker.Count == 0)
+            {
+                MessageBox.Show("لا يوجد إنتاج في الفترة دي للتصدير", "تنبيه",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new SaveFileDialog
+            {
+                Title = "حفظ التقرير العام للإنتاج",
+                Filter = "Excel (*.xlsx)|*.xlsx",
+                FileName = $"تقرير إنتاج {GeneralFrom:yyyy-MM-dd} إلى {GeneralTo:yyyy-MM-dd}.xlsx"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<ProductionReportService>();
+                var excelService = scope.ServiceProvider.GetRequiredService<WeeklyReportExcelService>();
+                var report = await service.GetGeneralReportAsync(GeneralFrom, GeneralTo);
+                excelService.ExportGeneralReport(report, dialog.FileName);
+
+                var open = MessageBox.Show(
+                    $"تم حفظ التقرير:\n{dialog.FileName}\n\nفتح الملف الآن؟",
+                    "تم التصدير", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (open == MessageBoxResult.Yes)
+                    Process.Start(new ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"تعذر حفظ الملف:\n{ex.Message}", "خطأ في التصدير",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // ======================= تبويب تقرير عامل معيّن =======================
+
+        /// <summary>قائمة العمال للاختيار منها</summary>
+        public ObservableCollection<WorkerPickItem> Workers { get; } = new();
+
+        [ObservableProperty]
+        private WorkerPickItem? _selectedWorker;
+
+        partial void OnSelectedWorkerChanged(WorkerPickItem? value)
+        {
+            // اختيار عامل جديد بيحمّل تقريره فورًا
+            if (value is not null) SafeAsync.Run(LoadWorkerReportAsync);
+        }
+
+        /// <summary>بداية فترة تقرير العامل (افتراضيًا أول الشهر)</summary>
+        [ObservableProperty]
+        private DateTime _workerFrom = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+
+        /// <summary>نهاية فترة تقرير العامل (افتراضيًا النهاردة)</summary>
+        [ObservableProperty]
+        private DateTime _workerTo = DateTime.Today;
+
+        /// <summary>ملخص التقرير (اسم العامل + النوع + الفترة)</summary>
+        [ObservableProperty]
+        private string _workerReportHeader = "اختر عامل لعرض تقريره";
+
+        /// <summary>سطر أرقام الإنتاج والحضور</summary>
+        [ObservableProperty]
+        private string _workerProductionText = "";
+
+        /// <summary>سطر الأجر والخصومات (بارز)</summary>
+        [ObservableProperty]
+        private string _workerWageText = "";
+
+        /// <summary>هل فيه تقرير معروض؟ (يتحكم في ظهور الأرقام)</summary>
+        [ObservableProperty]
+        private bool _hasWorkerReport;
+
+        public ObservableCollection<GeneralStageRow> WorkerByProductStage { get; } = new();
+        public ObservableCollection<WorkerDayRow> WorkerByDay { get; } = new();
+        public ObservableCollection<WorkerPenaltyRow> WorkerPenalties { get; } = new();
+
+        [RelayCommand]
+        private Task RefreshWorkerAsync() => LoadWorkerReportAsync();
+
+        [RelayCommand]
+        private Task WorkerPeriodAsync(string period)
+        {
+            (WorkerFrom, WorkerTo) = ResolveQuickPeriod(period);
+            return LoadWorkerReportAsync();
+        }
+
+        private async Task LoadWorkersListAsync()
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var workerRepo = scope.ServiceProvider.GetRequiredService<IWorkerRepository>();
+            var workers = await workerRepo.GetActiveWithSkillsAsync();
+
+            Workers.Clear();
+            foreach (var w in workers.OrderBy(w => w.FullName))
+                Workers.Add(new WorkerPickItem { Id = w.Id, Display = w.DisplayName });
+        }
+
+        private async Task LoadWorkerReportAsync()
+        {
+            if (SelectedWorker is null) return;
+
+            WorkerProductionReportDto report;
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var service = scope.ServiceProvider.GetRequiredService<ProductionReportService>();
+                report = await service.GetWorkerReportAsync(SelectedWorker.Id, WorkerFrom, WorkerTo);
+            }
+
+            WorkerByProductStage.Clear();
+            foreach (var s in report.ByProductStage)
+                WorkerByProductStage.Add(GeneralStageRow.From(s));
+
+            WorkerByDay.Clear();
+            foreach (var d in report.ByDay)
+                WorkerByDay.Add(WorkerDayRow.From(d));
+
+            WorkerPenalties.Clear();
+            foreach (var p in report.Penalties)
+                WorkerPenalties.Add(WorkerPenaltyRow.From(p));
+
+            var days = (WorkerTo.Date - WorkerFrom.Date).Days + 1;
+            WorkerReportHeader =
+                $"{report.WorkerName} ({report.EmployeeCode ?? "—"}) — {report.TypeText}   |   " +
+                $"من {report.From:yyyy/MM/dd} إلى {report.To:yyyy/MM/dd} ({days} يوم)";
+            WorkerProductionText =
+                $"إجمالي القطع: {report.TotalPieces:N0}   |   يوميات منتجة: {report.ProducedWorkdays:0.##}   |   " +
+                $"حضور: {report.PresentDays}   |   غياب بإذن: {report.AbsentWithPermissionDays}   |   " +
+                $"غياب بدون إذن: {report.AbsentWithoutPermissionDays} (خصم {report.AbsenceDeduction})";
+            WorkerWageText = report.DailyWageEgp > 0
+                ? $"صافي اليوميات: {report.NetWorkdays:0.##}   ×   سعر اليومية {report.DailyWageEgp:N0} ج   =   " +
+                  $"الأجر {report.NetWageEgp:N0} ج   (خصم جزاءات: {report.PenaltyDeduction})"
+                : $"صافي اليوميات: {report.NetWorkdays:0.##}   (خصم جزاءات: {report.PenaltyDeduction})   |   سعر اليومية غير محدد";
+            HasWorkerReport = true;
+        }
+
+        [RelayCommand]
+        private async Task ExportWorkerAsync()
+        {
+            if (SelectedWorker is null || !HasWorkerReport)
+            {
+                MessageBox.Show("اختر عامل الأول عشان تصدّر تقريره", "تنبيه",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new SaveFileDialog
+            {
+                Title = "حفظ تقرير العامل",
+                Filter = "Excel (*.xlsx)|*.xlsx",
+                FileName = $"تقرير {SelectedWorker.Display} {WorkerFrom:yyyy-MM-dd} إلى {WorkerTo:yyyy-MM-dd}.xlsx"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<ProductionReportService>();
+                var excelService = scope.ServiceProvider.GetRequiredService<WeeklyReportExcelService>();
+                var report = await service.GetWorkerReportAsync(SelectedWorker.Id, WorkerFrom, WorkerTo);
+                excelService.ExportWorkerReport(report, dialog.FileName);
+
+                var open = MessageBox.Show(
+                    $"تم حفظ التقرير:\n{dialog.FileName}\n\nفتح الملف الآن؟",
+                    "تم التصدير", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (open == MessageBoxResult.Yes)
+                    Process.Start(new ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"تعذر حفظ الملف:\n{ex.Message}", "خطأ في التصدير",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         // ======================= تصدير Excel =======================
 
         [RelayCommand]
@@ -501,6 +751,84 @@ namespace WorkforceManager.UI.ViewModels
                 dto.Breakdown.Select(b => $"{b.ProductName}/{b.StageName}: {b.PieceCount} قطعة ({b.Workdays} يومية)")),
             PenaltiesText = string.Join("، ",
                 dto.Penalties.Select(p => $"{p.Date:MM/dd} {p.Reason} ({p.DeductionName})"))
+        };
+    }
+
+    /// <summary>عنصر في قائمة اختيار العامل لتقرير عامل معيّن</summary>
+    public class WorkerPickItem
+    {
+        public int Id { get; init; }
+        public string Display { get; init; } = "";
+    }
+
+    /// <summary>سطر إنتاج مرحلة في التقارير (منتج/مرحلة + قطع + يوميات)</summary>
+    public class GeneralStageRow
+    {
+        public string ProductName { get; private init; } = "";
+        public string StageDisplay { get; private init; } = "";
+        public int Pieces { get; private init; }
+        public decimal Workdays { get; private init; }
+
+        public static GeneralStageRow From(ProductStageProductionDto dto) => new()
+        {
+            ProductName = dto.ProductName,
+            // آخر مرحلة = إنتاج مكتمل خرج من الخط — بنعلّمها للمستخدم
+            StageDisplay = dto.IsLastStage ? $"{dto.StageName} ✅ (مكتمل)" : dto.StageName,
+            Pieces = dto.Pieces,
+            Workdays = dto.Workdays
+        };
+    }
+
+    /// <summary>سطر عامل في التقرير العام (مرتّب باليوميات)</summary>
+    public class GeneralWorkerRow
+    {
+        public int Rank { get; private init; }
+        public string WorkerName { get; private init; } = "";
+        public string EmployeeCode { get; private init; } = "";
+        public string TypeText { get; private init; } = "";
+        public int TotalPieces { get; private init; }
+        public decimal TotalWorkdays { get; private init; }
+
+        public static GeneralWorkerRow From(WorkerProductionSummaryDto dto, int rank) => new()
+        {
+            Rank = rank,
+            WorkerName = dto.WorkerName,
+            EmployeeCode = dto.EmployeeCode ?? "—",
+            TypeText = dto.IsHourly ? "بالساعة" : "إنتاج",
+            TotalPieces = dto.TotalPieces,
+            TotalWorkdays = dto.TotalWorkdays
+        };
+    }
+
+    /// <summary>سطر يوم في تقرير عامل معيّن</summary>
+    public class WorkerDayRow
+    {
+        public string DateText { get; private init; } = "";
+        public int Pieces { get; private init; }
+        public decimal Workdays { get; private init; }
+        public string Detail { get; private init; } = "";
+
+        public static WorkerDayRow From(WorkerDayProductionDto dto) => new()
+        {
+            DateText = dto.Date.ToString("yyyy/MM/dd (dddd)"),
+            Pieces = dto.Pieces,
+            Workdays = dto.Workdays,
+            Detail = dto.Detail
+        };
+    }
+
+    /// <summary>سطر جزاء في تقرير عامل معيّن</summary>
+    public class WorkerPenaltyRow
+    {
+        public string DateText { get; private init; } = "";
+        public string Reason { get; private init; } = "";
+        public string DeductionName { get; private init; } = "";
+
+        public static WorkerPenaltyRow From(PenaltySummaryDto dto) => new()
+        {
+            DateText = dto.Date.ToString("yyyy/MM/dd"),
+            Reason = dto.Reason,
+            DeductionName = dto.Deduction.ToArabicName()
         };
     }
 }
