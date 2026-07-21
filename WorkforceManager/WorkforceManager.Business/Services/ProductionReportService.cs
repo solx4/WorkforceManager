@@ -25,6 +25,7 @@ namespace WorkforceManager.Business.Services
         private readonly IHourlyWorkLogRepository _hourlyRepo;
         private readonly IProductRepository _productRepo;
         private readonly IWorkerRepository _workerRepo;
+        private readonly IWageAdjustmentRepository _adjustmentRepo;
 
         public ProductionReportService(
             IDailyProductionRepository productionRepo,
@@ -32,7 +33,8 @@ namespace WorkforceManager.Business.Services
             IPenaltyRepository penaltyRepo,
             IHourlyWorkLogRepository hourlyRepo,
             IProductRepository productRepo,
-            IWorkerRepository workerRepo)
+            IWorkerRepository workerRepo,
+            IWageAdjustmentRepository adjustmentRepo)
         {
             _productionRepo = productionRepo;
             _attendanceRepo = attendanceRepo;
@@ -40,6 +42,7 @@ namespace WorkforceManager.Business.Services
             _hourlyRepo = hourlyRepo;
             _productRepo = productRepo;
             _workerRepo = workerRepo;
+            _adjustmentRepo = adjustmentRepo;
         }
 
         /// <summary>آخر مرحلة (أعلى ترتيب) لكل منتج — لتحديد القطع المكتملة</summary>
@@ -154,6 +157,7 @@ namespace WorkforceManager.Business.Services
             var penalties = (await _penaltyRepo.GetByWorkerAndRangeAsync(workerId, fromDate, toDate)).ToList();
             var hourly = (await _hourlyRepo.GetByRangeAsync(fromDate, toDate))
                 .Where(h => h.WorkerId == workerId).ToList();
+            var adjustments = (await _adjustmentRepo.GetByWorkerAndRangeAsync(workerId, fromDate, toDate)).ToList();
             var lastStageIds = await GetLastStageIdsAsync();
 
             // الإنتاج بالمنتج/المرحلة
@@ -231,6 +235,16 @@ namespace WorkforceManager.Business.Services
                     Date = p.Date,
                     Reason = p.Reason,
                     Deduction = p.Deduction
+                }).ToList(),
+                BonusEgp = adjustments.Where(a => a.Type == WageAdjustmentType.Bonus).Sum(a => a.AmountEgp),
+                AdvanceEgp = adjustments.Where(a => a.Type == WageAdjustmentType.Advance).Sum(a => a.AmountEgp),
+                Adjustments = adjustments.Select(a => new WageAdjustmentSummaryDto
+                {
+                    AdjustmentId = a.Id,
+                    Date = a.Date,
+                    Type = a.Type,
+                    AmountEgp = a.AmountEgp,
+                    Note = a.Note
                 }).ToList()
             };
         }

@@ -21,6 +21,7 @@ namespace WorkforceManager.Data
         public DbSet<Penalty> Penalties => Set<Penalty>();
         public DbSet<AppUser> AppUsers => Set<AppUser>();
         public DbSet<HourlyWorkLog> HourlyWorkLogs => Set<HourlyWorkLog>();
+        public DbSet<WageAdjustment> WageAdjustments => Set<WageAdjustment>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -108,6 +109,22 @@ namespace WorkforceManager.Data
             modelBuilder.Entity<HourlyWorkLog>()
                 .Property(h => h.WorkdaysCredited)
                 .HasColumnType("decimal(5,2)");
+
+            // ---------- WageAdjustment: Worker (1-to-many) ----------
+            modelBuilder.Entity<WageAdjustment>()
+                .HasOne(a => a.Worker)
+                .WithMany(w => w.WageAdjustments)
+                .HasForeignKey(a => a.WorkerId)
+                .OnDelete(DeleteBehavior.Cascade); // نفس قاعدة الجزاءات: حذف عامل (نادر) يحذف تعديلات أجره
+
+            // المبلغ بالجنيه بدقة عشرية كافية
+            modelBuilder.Entity<WageAdjustment>()
+                .Property(a => a.AmountEgp)
+                .HasColumnType("decimal(10,2)");
+
+            // فهرس التاريخ لاستعلامات اليوم/الفترة (زي باقي الجداول)
+            modelBuilder.Entity<WageAdjustment>()
+                .HasIndex(a => a.Date);
 
             // ---------- AppUser: اسم المستخدم فريد (مفيش حسابين بنفس الاسم) ----------
             modelBuilder.Entity<AppUser>()

@@ -94,10 +94,33 @@ namespace WorkforceManager.Business.DTOs
         public decimal PenaltyDeduction { get; init; }
         public List<PenaltySummaryDto> Penalties { get; init; } = new();
 
+        // ------- السلف والحوافز (بالجنيه) -------
+        /// <summary>إجمالي الحوافز/المكافآت بالجنيه (تُضاف للأجر)</summary>
+        public decimal BonusEgp { get; init; }
+
+        /// <summary>إجمالي السلف/المسحوبات بالجنيه (تُخصم من الأجر)</summary>
+        public decimal AdvanceEgp { get; init; }
+
+        /// <summary>تفصيل حركات السلف والحوافز في الفترة</summary>
+        public List<WageAdjustmentSummaryDto> Adjustments { get; init; } = new();
+
         /// <summary>صافي يوميات الفترة = المنتج − خصم الغياب − خصم الجزاءات</summary>
         public decimal NetWorkdays => ProducedWorkdays - AbsenceDeduction - PenaltyDeduction;
 
-        /// <summary>الأجر بالجنيه = الصافي × سعر اليومية</summary>
-        public decimal NetWageEgp => NetWorkdays * DailyWageEgp;
+        /// <summary>أجر اليوميات بالجنيه = الصافي × سعر اليومية (قبل السلف والحوافز)</summary>
+        public decimal WorkdaysWageEgp => NetWorkdays * DailyWageEgp;
+
+        /// <summary>الأجر النهائي بالجنيه = أجر اليوميات + الحوافز − السلف</summary>
+        public decimal NetWageEgp => WorkdaysWageEgp + BonusEgp - AdvanceEgp;
+    }
+
+    /// <summary>سطر حركة سلفة/حافز داخل تقرير العامل وقسيمة أجره</summary>
+    public class WageAdjustmentSummaryDto
+    {
+        public int AdjustmentId { get; init; }
+        public DateTime Date { get; init; }
+        public Core.Enums.WageAdjustmentType Type { get; init; }
+        public decimal AmountEgp { get; init; }
+        public string? Note { get; init; }
     }
 }

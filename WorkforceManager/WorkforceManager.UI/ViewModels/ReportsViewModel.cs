@@ -514,11 +514,40 @@ namespace WorkforceManager.UI.ViewModels
                 $"إجمالي القطع: {report.TotalPieces:N0}   |   يوميات منتجة: {report.ProducedWorkdays:0.##}   |   " +
                 $"حضور: {report.PresentDays}   |   غياب بإذن: {report.AbsentWithPermissionDays}   |   " +
                 $"غياب بدون إذن: {report.AbsentWithoutPermissionDays} (خصم {report.AbsenceDeduction})";
+            // سطر الأجر: أجر اليوميات + الحوافز − السلف = الأجر النهائي
+            var adjParts = "";
+            if (report.BonusEgp > 0) adjParts += $"   +   حوافز {report.BonusEgp:N0} ج";
+            if (report.AdvanceEgp > 0) adjParts += $"   −   سلف {report.AdvanceEgp:N0} ج";
             WorkerWageText = report.DailyWageEgp > 0
-                ? $"صافي اليوميات: {report.NetWorkdays:0.##}   ×   سعر اليومية {report.DailyWageEgp:N0} ج   =   " +
-                  $"الأجر {report.NetWageEgp:N0} ج   (خصم جزاءات: {report.PenaltyDeduction})"
-                : $"صافي اليوميات: {report.NetWorkdays:0.##}   (خصم جزاءات: {report.PenaltyDeduction})   |   سعر اليومية غير محدد";
+                ? $"أجر اليوميات: {report.NetWorkdays:0.##} × {report.DailyWageEgp:N0} = {report.WorkdaysWageEgp:N0} ج{adjParts}   =   " +
+                  $"الأجر النهائي {report.NetWageEgp:N0} ج   (خصم جزاءات: {report.PenaltyDeduction})"
+                : $"صافي اليوميات: {report.NetWorkdays:0.##}   (خصم جزاءات: {report.PenaltyDeduction}){adjParts}   |   سعر اليومية غير محدد";
             HasWorkerReport = true;
+        }
+
+        [RelayCommand]
+        private async Task PrintPayslipAsync()
+        {
+            if (SelectedWorker is null || !HasWorkerReport)
+            {
+                MessageBox.Show("اختر عامل الأول عشان تطبع قسيمته", "تنبيه",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            WorkerProductionReportDto report;
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var service = scope.ServiceProvider.GetRequiredService<ProductionReportService>();
+                report = await service.GetWorkerReportAsync(SelectedWorker.Id, WorkerFrom, WorkerTo);
+            }
+
+            // معاينة القسيمة في نافذة، والطباعة من جواها لأي طابعة/PDF
+            var window = new Views.PayslipWindow(PayslipData.From(report))
+            {
+                Owner = Application.Current.MainWindow
+            };
+            window.ShowDialog();
         }
 
         [RelayCommand]
@@ -691,6 +720,8 @@ namespace WorkforceManager.UI.ViewModels
         public int DaysWorked { get; private init; }
         public decimal NetWorkdays { get; private init; }
         public string DailyWageText { get; private init; } = "";
+        public string BonusText { get; private init; } = "";
+        public string AdvanceText { get; private init; } = "";
         public string NetWageText { get; private init; } = "";
 
         public static PayrollRow From(WorkerPayrollDto dto, int rank) => new()
@@ -702,7 +733,9 @@ namespace WorkforceManager.UI.ViewModels
             DaysWorked = dto.DaysWorked,
             NetWorkdays = dto.NetWorkdays,
             DailyWageText = dto.DailyWageEgp > 0 ? $"{dto.DailyWageEgp:N0} ج" : "لم يُحدد",
-            NetWageText = dto.DailyWageEgp > 0 ? $"{dto.NetWageEgp:N0} ج" : "—"
+            BonusText = dto.BonusEgp > 0 ? $"{dto.BonusEgp:N0} ج" : "—",
+            AdvanceText = dto.AdvanceEgp > 0 ? $"{dto.AdvanceEgp:N0} ج" : "—",
+            NetWageText = dto.DailyWageEgp > 0 || dto.BonusEgp > 0 || dto.AdvanceEgp > 0 ? $"{dto.NetWageEgp:N0} ج" : "—"
         };
     }
 

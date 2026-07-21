@@ -9,9 +9,10 @@ namespace WorkforceManager.Business.Services
     /// مباشرة — مش أسابيع كاملة زي WeeklySummaryService — عشان المدير
     /// يختار من تاريخ لتاريخ ويطلع إجمالي أجر كل عامل بالجنيه.
     ///
-    /// نفس قواعد الحساب: الأجر = صافي اليوميات × سعر اليومية، والصافي =
+    /// قواعد الحساب: أجر اليوميات = صافي اليوميات × سعر اليومية، والصافي =
     /// (إنتاج + شغل بالساعة) − خصم الغياب بدون إذن (نص يومية/يوم) −
-    /// خصم الجزاءات. السعر الحالي للعامل بيُطبّق على كل الفترة.
+    /// خصم الجزاءات. الأجر النهائي = أجر اليوميات + الحوافز − السلف.
+    /// السعر الحالي للعامل بيُطبّق على كل الفترة.
     /// </summary>
     public class PayrollService
     {
@@ -22,17 +23,20 @@ namespace WorkforceManager.Business.Services
         private readonly IAttendanceRepository _attendanceRepo;
         private readonly IPenaltyRepository _penaltyRepo;
         private readonly IHourlyWorkLogRepository _hourlyRepo;
+        private readonly IWageAdjustmentRepository _adjustmentRepo;
 
         public PayrollService(
             IDailyProductionRepository productionRepo,
             IAttendanceRepository attendanceRepo,
             IPenaltyRepository penaltyRepo,
-            IHourlyWorkLogRepository hourlyRepo)
+            IHourlyWorkLogRepository hourlyRepo,
+            IWageAdjustmentRepository adjustmentRepo)
         {
             _productionRepo = productionRepo;
             _attendanceRepo = attendanceRepo;
             _penaltyRepo = penaltyRepo;
             _hourlyRepo = hourlyRepo;
+            _adjustmentRepo = adjustmentRepo;
         }
 
         /// <summary>يبني كشف أجور كل العمال اللي لهم نشاط في الفترة [from, to]</summary>
@@ -46,16 +50,19 @@ namespace WorkforceManager.Business.Services
             var attendance = await _attendanceRepo.GetByRangeAsync(fromDate, toDate);
             var penalties = await _penaltyRepo.GetByRangeAsync(fromDate, toDate);
             var hourly = await _hourlyRepo.GetByRangeAsync(fromDate, toDate);
+            var adjustments = await _adjustmentRepo.GetByRangeAsync(fromDate, toDate);
 
             var productionByWorker = production.ToLookup(p => p.WorkerId);
             var attendanceByWorker = attendance.ToLookup(a => a.WorkerId);
             var penaltiesByWorker = penalties.ToLookup(p => p.WorkerId);
             var hourlyByWorker = hourly.ToLookup(h => h.WorkerId);
+            var adjustmentsByWorker = adjustments.ToLookup(a => a.WorkerId);
 
             var workerIds = productionByWorker.Select(g => g.Key)
                 .Concat(attendanceByWorker.Select(g => g.Key))
                 .Concat(penaltiesByWorker.Select(g => g.Key))
                 .Concat(hourlyByWorker.Select(g => g.Key))
+                .Concat(adjustmentsByWorker.Select(g => g.Key))
                 .Distinct();
 
             var workers = new List<WorkerPayrollDto>();
@@ -65,12 +72,14 @@ namespace WorkforceManager.Business.Services
                 var wa = attendanceByWorker[workerId].ToList();
                 var wpen = penaltiesByWorker[workerId].ToList();
                 var wh = hourlyByWorker[workerId].ToList();
+                var wadj = adjustmentsByWorker[workerId].ToList();
 
                 // بيانات العامل (اسم + سعر) من أي سجل محمّل بـ Include للـ Worker
                 var workerRef = wp.FirstOrDefault()?.Worker
                     ?? wa.FirstOrDefault()?.Worker
                     ?? wh.FirstOrDefault()?.Worker
-                    ?? wpen.First().Worker;
+                    ?? wpen.FirstOrDefault()?.Worker
+                    ?? wadj.First().Worker;
 
                 var producedWorkdays = wp.Sum(p => p.WorkdaysCompleted) + wh.Sum(h => h.WorkdaysCredited);
                 var absentWithoutPermission = wa.Count(a => a.Status == AttendanceStatus.AbsentWithoutPermission);
@@ -91,7 +100,9 @@ namespace WorkforceManager.Business.Services
                     ProducedWorkdays = producedWorkdays,
                     AbsenceDeduction = absentWithoutPermission * UnexcusedAbsenceDeductionPerDay,
                     PenaltyDeduction = wpen.Sum(p => p.DeductedWorkdays),
-                    DaysWorked = workDays
+                    DaysWorked = workDays,
+                    BonusEgp = wadj.Where(a => a.Type == WageAdjustmentType.Bonus).Sum(a => a.AmountEgp),
+                    AdvanceEgp = wadj.Where(a => a.Type == WageAdjustmentType.Advance).Sum(a => a.AmountEgp)
                 });
             }
 

@@ -27,11 +27,20 @@ namespace WorkforceManager.Business.DTOs
         /// <summary>عدد أيام العمل الفعلية (اللي فيها إنتاج أو شغل ساعة)</summary>
         public int DaysWorked { get; init; }
 
+        /// <summary>إجمالي الحوافز/المكافآت بالجنيه خلال الفترة (تُضاف للأجر)</summary>
+        public decimal BonusEgp { get; init; }
+
+        /// <summary>إجمالي السلف/المسحوبات بالجنيه خلال الفترة (تُخصم من الأجر)</summary>
+        public decimal AdvanceEgp { get; init; }
+
         /// <summary>صافي يوميات الفترة = المنتج − الخصومات</summary>
         public decimal NetWorkdays => ProducedWorkdays - AbsenceDeduction - PenaltyDeduction;
 
-        /// <summary>الأجر النهائي بالجنيه = صافي اليوميات × سعر اليومية</summary>
-        public decimal NetWageEgp => NetWorkdays * DailyWageEgp;
+        /// <summary>أجر اليوميات بالجنيه = صافي اليوميات × سعر اليومية (قبل السلف والحوافز)</summary>
+        public decimal WorkdaysWageEgp => NetWorkdays * DailyWageEgp;
+
+        /// <summary>الأجر النهائي بالجنيه = أجر اليوميات + الحوافز − السلف</summary>
+        public decimal NetWageEgp => WorkdaysWageEgp + BonusEgp - AdvanceEgp;
     }
 
     /// <summary>ملخص كشف أجور فترة (كل العمال + الإجماليات)</summary>

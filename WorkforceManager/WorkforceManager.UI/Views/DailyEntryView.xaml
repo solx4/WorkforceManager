@@ -553,6 +553,87 @@
                     </Border>
                 </Grid>
             </TabItem>
+
+            <!-- ============ تبويب السلف والحوافز ============ -->
+            <TabItem Header="  السلف والحوافز  ">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- فورم تسجيل سلفة/حافز جديد -->
+                    <Border Grid.Row="0" Background="{StaticResource SubtleBgBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                            BorderThickness="1" CornerRadius="12" Padding="14" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock Text="تسجيل سلفة أو حافز (بالجنيه)" FontWeight="Bold"
+                                       Foreground="{StaticResource BrandBrush}" Margin="0,0,0,8" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="العامل:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <ComboBox ItemsSource="{Binding AttendanceRows}" SelectedItem="{Binding AdjustmentWorker}"
+                                          DisplayMemberPath="FullName" Width="200" Margin="0,0,14,0" />
+                                <TextBlock Text="النوع:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <ComboBox ItemsSource="{Binding AdjustmentTypeOptions}" SelectedItem="{Binding SelectedAdjustmentType}"
+                                          DisplayMemberPath="Display" Width="110" Margin="0,0,14,0" />
+                                <TextBlock Text="المبلغ:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBox Text="{Binding AdjustmentAmount, UpdateSourceTrigger=PropertyChanged}"
+                                         Width="110" Padding="8,6" VerticalAlignment="Center" />
+                                <TextBlock Text="ج" VerticalAlignment="Center" Margin="6,0,0,0" FontWeight="Bold" />
+                            </StackPanel>
+                            <DockPanel Margin="0,8,0,0">
+                                <Button DockPanel.Dock="Left" Content="＋ تسجيل"
+                                        Command="{Binding AddAdjustmentCommand}"
+                                        Style="{StaticResource PrimaryButton}" />
+                                <TextBlock Text="البيان:" VerticalAlignment="Center" Margin="12,0,6,0" DockPanel.Dock="Left" />
+                                <!-- بيان الحركة اختياري: سلفة نص الشهر، مكافأة تارجت، ... -->
+                                <TextBox Text="{Binding AdjustmentNote, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="8,6" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource HintText}" FontSize="11.5" Margin="0,8,0,0"
+                                       Text="السلفة بتتخصم من أجر العامل في كشف الفترة، والحافز بيتزاد. النوع بيحدد الاتجاه — المبلغ دايمًا موجب." />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- حركات اليوم المسجلة -->
+                    <Border Grid.Row="1" Style="{StaticResource Card}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="سلف وحوافز اليوم المسجلة" Style="{StaticResource SectionTitle}" Margin="4,0,4,6" />
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding DayAdjustments}"
+                                  Style="{StaticResource ModernDataGrid}"
+                                  AutoGenerateColumns="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="العامل" Binding="{Binding WorkerName}" Width="*" />
+                                <!-- النوع بلونه: سلفة حمرا، حافز أخضر -->
+                                <DataGridTemplateColumn Header="النوع" Width="90">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding TypeName}" Foreground="{Binding TypeColor}"
+                                                       FontWeight="Bold" VerticalAlignment="Center" Margin="4,0" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="المبلغ" Binding="{Binding AmountText}" Width="110" />
+                                <DataGridTextColumn Header="البيان" Binding="{Binding Note}" Width="2*" />
+                                <DataGridTemplateColumn Header="" Width="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="🗑 حذف" FontSize="11" Foreground="#B00020"
+                                                    Style="{StaticResource IconButton}"
+                                                    Command="{Binding DataContext.RemoveAdjustmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
         </TabControl>
     </Grid>
 </UserControl>

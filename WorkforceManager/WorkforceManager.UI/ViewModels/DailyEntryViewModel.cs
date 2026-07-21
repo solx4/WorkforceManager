@@ -89,6 +89,7 @@ namespace WorkforceManager.UI.ViewModels
             await LoadHourlyAsync();
             await LoadAttendanceAsync();
             await LoadPenaltiesAsync();
+            await LoadAdjustmentsAsync();
         }
 
         private async Task ReloadForDateAsync()
@@ -101,6 +102,7 @@ namespace WorkforceManager.UI.ViewModels
             await LoadHourlyAsync();
             await LoadAttendanceAsync();
             await LoadPenaltiesAsync();
+            await LoadAdjustmentsAsync();
         }
 
         /// <summary>بعد حفظ أي رحلة: الحضور التلقائي وسجلات اليوم بيظهروا فورًا</summary>
@@ -458,6 +460,97 @@ namespace WorkforceManager.UI.ViewModels
             await penaltyService.RemovePenaltyAsync(row.PenaltyId);
             await LoadPenaltiesAsync();
         }
+
+        // ======================= قسم السلف والحوافز =======================
+
+        /// <summary>خيارات نوع الحركة (سلفة/حافز) للقائمة المنسدلة</summary>
+        public List<AdjustmentTypeOption> AdjustmentTypeOptions { get; } = new()
+        {
+            new(WageAdjustmentType.Advance),
+            new(WageAdjustmentType.Bonus)
+        };
+
+        [ObservableProperty]
+        private AttendanceRow? _adjustmentWorker; // نفس صفوف الحضور كقائمة اختيار العامل
+
+        [ObservableProperty]
+        private AdjustmentTypeOption? _selectedAdjustmentType;
+
+        [ObservableProperty]
+        private string _adjustmentAmount = string.Empty;
+
+        [ObservableProperty]
+        private string _adjustmentNote = string.Empty;
+
+        public ObservableCollection<AdjustmentRow> DayAdjustments { get; } = new();
+
+        private async Task LoadAdjustmentsAsync()
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<WageAdjustmentService>();
+
+            var adjustments = await service.GetByDateAsync(EntryDate);
+            DayAdjustments.Clear();
+            foreach (var a in adjustments)
+            {
+                DayAdjustments.Add(new AdjustmentRow
+                {
+                    AdjustmentId = a.Id,
+                    WorkerName = a.Worker.FullName,
+                    TypeName = a.Type.ToArabicName(),
+                    // السلفة حمرا (خصم) والحافز أخضر (إضافة) — تمييز بصري سريع
+                    TypeColor = a.Type == WageAdjustmentType.Bonus ? "#0B6E4F" : "#B00020",
+                    AmountText = $"{a.AmountEgp:N0} ج",
+                    Note = a.Note ?? ""
+                });
+            }
+        }
+
+        [RelayCommand]
+        private async Task AddAdjustmentAsync()
+        {
+            if (AdjustmentWorker is null)
+            {
+                MessageBox.Show("اختار العامل الأول", "تنبيه", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (SelectedAdjustmentType is null)
+            {
+                MessageBox.Show("اختار النوع (سلفة/حافز)", "تنبيه", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (!decimal.TryParse(AdjustmentAmount, out var amount) || amount <= 0)
+            {
+                MessageBox.Show("اكتب مبلغ صحيح أكبر من صفر", "تنبيه", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            using var scope = _scopeFactory.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<WageAdjustmentService>();
+            await service.RecordAdjustmentAsync(
+                AdjustmentWorker.WorkerId, EntryDate, SelectedAdjustmentType.Value, amount, AdjustmentNote);
+
+            // تفريغ الفورم وإعادة تحميل قائمة اليوم
+            AdjustmentAmount = string.Empty;
+            AdjustmentNote = string.Empty;
+            AdjustmentWorker = null;
+            await LoadAdjustmentsAsync();
+        }
+
+        [RelayCommand]
+        private async Task RemoveAdjustmentAsync(AdjustmentRow? row)
+        {
+            if (row is null) return;
+
+            if (MessageBox.Show($"حذف {row.TypeName} ({row.AmountText}) عن {row.WorkerName}؟",
+                    "تأكيد", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
+            using var scope = _scopeFactory.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<WageAdjustmentService>();
+            await service.RemoveAdjustmentAsync(row.AdjustmentId);
+            await LoadAdjustmentsAsync();
+        }
     }
 
     // ======================= نماذج العرض المشتركة للشاشة =======================
@@ -549,5 +642,24 @@ namespace WorkforceManager.UI.ViewModels
         public string WorkerName { get; init; } = "";
         public string Reason { get; init; } = "";
         public string DeductionName { get; init; } = "";
+    }
+
+    /// <summary>خيار نوع الحركة (سلفة/حافز) في القائمة المنسدلة</summary>
+    public class AdjustmentTypeOption
+    {
+        public AdjustmentTypeOption(WageAdjustmentType value) => Value = value;
+        public WageAdjustmentType Value { get; }
+        public string Display => Value.ToArabicName();
+    }
+
+    /// <summary>حركة سلفة/حافز واحدة في قائمة اليوم</summary>
+    public class AdjustmentRow
+    {
+        public int AdjustmentId { get; init; }
+        public string WorkerName { get; init; } = "";
+        public string TypeName { get; init; } = "";
+        public string TypeColor { get; init; } = "#333333";
+        public string AmountText { get; init; } = "";
+        public string Note { get; init; } = "";
     }
 }

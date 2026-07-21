@@ -333,8 +333,25 @@
                                 <DataGridTextColumn Header="الكود" Binding="{Binding EmployeeCode}" Width="70" />
                                 <DataGridTextColumn Header="النوع" Binding="{Binding TypeText}" Width="75" />
                                 <DataGridTextColumn Header="أيام العمل" Binding="{Binding DaysWorked}" Width="85" />
-                                <DataGridTextColumn Header="صافي اليوميات" Binding="{Binding NetWorkdays}" Width="105" />
-                                <DataGridTextColumn Header="سعر اليومية" Binding="{Binding DailyWageText}" Width="100" />
+                                <DataGridTextColumn Header="صافي اليوميات" Binding="{Binding NetWorkdays}" Width="100" />
+                                <DataGridTextColumn Header="سعر اليومية" Binding="{Binding DailyWageText}" Width="95" />
+                                <!-- الحافز بالأخضر والسلفة بالأحمر -->
+                                <DataGridTextColumn Header="حافز" Binding="{Binding BonusText}" Width="80">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="سلفة" Binding="{Binding AdvanceText}" Width="80">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
                                 <!-- الأجر النهائي بارز بالأخضر -->
                                 <DataGridTextColumn Header="الأجر بالجنيه" Binding="{Binding NetWageText}" Width="120">
                                     <DataGridTextColumn.ElementStyle>
@@ -462,6 +479,8 @@
                         <DatePicker DockPanel.Dock="Left" SelectedDate="{Binding WorkerTo}" Width="130" VerticalAlignment="Center" Margin="0,0,10,0" />
                         <Button DockPanel.Dock="Left" Content="🔄 عرض" Command="{Binding RefreshWorkerCommand}"
                                 Style="{StaticResource GhostButton}" Margin="0,0,8,0" />
+                        <Button DockPanel.Dock="Left" Content="🖨 قسيمة أجر" Command="{Binding PrintPayslipCommand}"
+                                Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" />
                         <Button DockPanel.Dock="Left" Content="📊 تصدير Excel" Command="{Binding ExportWorkerCommand}"
                                 Style="{StaticResource SuccessButton}" />
                     </DockPanel>

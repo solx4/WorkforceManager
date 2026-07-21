@@ -55,7 +55,8 @@ Core  <----------------------- UI
 - **WorkforceManager.Business** — all business rules live here, nowhere else (especially not in UI code):
   `WorkdayCalculationService`, `PerformanceEvaluationService`, `AttendanceService`, `ProductionFlowService`,
   `WeeklySummaryService`, `PenaltyService`, `WorkerManagementService`, `ProductManagementService`,
-  `ProductionReportService`, `AuthService`, `WeeklyReportExcelService`, plus their DTOs in `DTOs/`.
+  `ProductionReportService`, `WageAdjustmentService`, `AuthService`, `WeeklyReportExcelService`, plus
+  their DTOs in `DTOs/`.
 - **WorkforceManager.UI** — WPF, MVVM (CommunityToolkit.Mvvm) + MaterialDesignThemes. `App.xaml.cs` wires
   up DI via `Microsoft.Extensions.Hosting`'s `Host` (`AppHost`) — this is the single place new
   repositories/services/views get registered. `WorkersView` (+ `WorkersViewModel`, `WorkerEditDialog`) is
@@ -67,14 +68,18 @@ Core  <----------------------- UI
   preview, independent save; "add product" button appends sessions; row-level commands live on the row
   view-models via callbacks, not RelativeSource), a "سجلات اليوم" correction tab (edit/delete saved
   production records), an "العمال بالساعة" tab (hourly workers pick an end-hour → live workdays preview
-  via the ladder → save + auto-attendance), attendance grid (upsert per worker/date), and
-  penalties (add with reason/deduction, list + delete for the day). `ReportsView` is implemented: daily evaluation tab (colored ratings vs team
+  via the ladder → save + auto-attendance), attendance grid (upsert per worker/date),
+  penalties (add with reason/deduction, list + delete for the day), and an "السلف والحوافز" tab
+  (advances/bonuses in EGP: pick worker + type + amount + note, list with delete; سلفة red, حافز green).
+  `ReportsView` is implemented: daily evaluation tab (colored ratings vs team
   average) + weekly sheet tab (net-workdays ranking, week navigation, Excel export via
   `WeeklyReportExcelService`/ClosedXML in Business) + products chart tab (weekly COMPLETED pieces per
   product = pieces on each product's last stage only, via `ProductionChartService`; bars are native WPF
   elements, no chart library; time axis forced LTR) + "تقرير الإنتاج" general-report tab (department
   summary + by product/stage + by worker) + "تقرير عامل" per-worker tab (production detail by stage and
-  by day + attendance + wage/penalties). Both report tabs share the same period model: quick buttons
+  by day + attendance + wage/penalties + advances/bonuses breakdown line + a "🖨 قسيمة أجر" printable
+  payslip via `PayslipWindow`/`PayslipData` — a preview window that prints the slip to any printer or
+  Microsoft Print to PDF, no external library). Both report tabs share the same period model: quick buttons
   (اليوم/الأسبوع/الشهر) + a free from/to custom range (any span works, e.g. day 1→20), all served by
   `ProductionReportService.GetGeneralReportAsync(from,to)`/`GetWorkerReportAsync(workerId,from,to)`
   (completed pieces = last-stage-per-product, same rule as the chart) with Excel export via
@@ -109,6 +114,11 @@ Core  <----------------------- UI
   OneDay=1, ThreeDays=3, OneWeek=6 workdays — a work week is 6 days since Friday is off). Independent of
   attendance (can be issued while present). Cascade-deletes with `Worker`. Deleting a wrongly-entered
   penalty is a hard delete (no soft-delete value).
+- `WageAdjustment`: a money movement in EGP on a worker on a date — `WageAdjustmentType` enum: Advance
+  (سلفة, deducted) vs Bonus (حافز, added). `AmountEgp` is always positive; the type sets direction
+  (`SignedAmountEgp` computed). Unlike penalties (which deduct workdays), these are direct EGP amounts on
+  the wage. Independent of production/attendance/penalties. Cascade-deletes with `Worker`; hard delete for
+  corrections. Date-leading index like the other by-date tables.
 - Soft-delete convention: `Worker.IsActive` / `Product.IsActive` / `ProductionStage.IsActive` flags are used
   instead of hard deletes, to preserve historical production/attendance records.
 - Two worker pay types: piece-rate (default) vs hourly. `Worker.HourlyRole` (nullable `HourlyRole` enum:
@@ -142,9 +152,16 @@ Core  <----------------------- UI
   `BelowAverageThreshold`) are relative percentages vs. team average, defined as constants in that service.
 - `PayrollService.GetPeriodPayrollAsync(from, to)`: custom-period (e.g. monthly) wage sheet. Aggregates
   ALL days in the range directly (not whole weeks): produced + hourly workdays − absence/penalty
-  deductions, × current wage. Surfaced in ReportsView's "كشف الأجور" tab (date range + Excel export via
-  `WeeklyReportExcelService.ExportPeriodPayroll`). Weekly wage also shows in the weekly sheet (`NetWageEgp`
-  column + totals row in Excel) and per-week in the worker profile.
+  deductions, × current wage = workdays-wage, then **+ bonuses − advances (EGP)** = net wage. Surfaced in
+  ReportsView's "كشف الأجور" tab (date range + Excel export via `WeeklyReportExcelService.ExportPeriodPayroll`,
+  with حافز/سلفة columns). Weekly wage also shows in the weekly sheet (`NetWageEgp` column + totals row in
+  Excel) and per-week in the worker profile. (NOTE: weekly sheet wage does NOT include EGP adjustments —
+  advances/bonuses only flow through the period payroll + worker report + payslip.)
+- `WageAdjustmentService.RecordAdjustmentAsync/RemoveAdjustmentAsync`: add/hard-delete an advance (سلفة) or
+  bonus (حافز) in EGP for a worker on a date. Surfaced in DailyEntryView's "السلف والحوافز" tab (same
+  attendance-row worker picker as penalties; سلفة shown red, حافز green). Both `PayrollService` and
+  `ProductionReportService.GetWorkerReportAsync` fold these into net wage; the worker report shows the full
+  breakdown line (أجر اليوميات + حوافز − سلف = الأجر النهائي) and a printable payslip (see ReportsView).
 - `HourlyWorkdayService`: hourly wage ladder. Shift 8am→4pm. `ComputeWorkdays(endHour24)` (pure/static):
   finished by 4pm → pro-rata `(endHour-8)/8` (max 1.0); finished 4pm–8pm → 1.5; finished 8pm–midnight →
   2.0. NON-cumulative (last period reached wins). `RecordHourlyWorkAsync` upserts + snapshots + auto-marks

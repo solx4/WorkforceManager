@@ -82,6 +82,9 @@ namespace WorkforceManager.Core.Models
         /// <summary>سجلات الشغل بالساعة (للعمال بالساعة فقط)</summary>
         public virtual ICollection<HourlyWorkLog> HourlyWorkLogs { get; set; } = new List<HourlyWorkLog>();
 
+        /// <summary>تعديلات الأجر بالجنيه (سلف وحوافز) — تدخل في صافي أجر الفترة</summary>
+        public virtual ICollection<WageAdjustment> WageAdjustments { get; set; } = new List<WageAdjustment>();
+
         [NotMapped]
         public string DisplayName => string.IsNullOrWhiteSpace(EmployeeCode)
             ? FullName

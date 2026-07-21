@@ -141,7 +141,8 @@ namespace WorkforceManager.Business.Services
             var sheet = workbook.Worksheets.Add("كشف الأجور");
             sheet.RightToLeft = true;
 
-            sheet.Range(1, 1, 1, 8).Merge();
+            const int cols = 10;
+            sheet.Range(1, 1, 1, cols).Merge();
             var title = sheet.Cell(1, 1);
             title.Value = $"كشف أجور الفترة: من {payroll.From:yyyy/MM/dd} إلى {payroll.To:yyyy/MM/dd}";
             title.Style.Font.SetBold().Font.SetFontSize(14);
@@ -151,7 +152,7 @@ namespace WorkforceManager.Business.Services
             string[] headers =
             {
                 "الترتيب", "اسم العامل", "الكود", "النوع",
-                "أيام العمل", "صافي اليوميات", "سعر اليومية", "الأجر بالجنيه"
+                "أيام العمل", "صافي اليوميات", "سعر اليومية", "حافز", "سلفة", "الأجر بالجنيه"
             };
             for (var c = 0; c < headers.Length; c++)
             {
@@ -174,29 +175,36 @@ namespace WorkforceManager.Business.Services
                 sheet.Cell(row, 5).Value = w.DaysWorked;
                 sheet.Cell(row, 6).Value = w.NetWorkdays;
                 sheet.Cell(row, 7).Value = w.DailyWageEgp;
-                sheet.Cell(row, 8).Value = w.NetWageEgp;
+                sheet.Cell(row, 8).Value = w.BonusEgp;
+                sheet.Cell(row, 9).Value = w.AdvanceEgp;
+                sheet.Cell(row, 10).Value = w.NetWageEgp;
 
-                var wageCell = sheet.Cell(row, 8);
+                if (w.BonusEgp > 0) sheet.Cell(row, 8).Style.Font.SetFontColor(XLColor.FromHtml("#0B6E4F"));
+                if (w.AdvanceEgp > 0) sheet.Cell(row, 9).Style.Font.SetFontColor(XLColor.FromHtml("#B00020"));
+
+                var wageCell = sheet.Cell(row, 10);
                 wageCell.Style.Font.SetBold().Font.SetFontColor(XLColor.FromHtml("#0B6E4F"));
                 wageCell.Style.NumberFormat.Format = "#,##0 \"ج\"";
 
                 if (i % 2 == 1)
-                    sheet.Range(row, 1, row, 8).Style.Fill.SetBackgroundColor(StripeColor);
+                    sheet.Range(row, 1, row, cols).Style.Fill.SetBackgroundColor(StripeColor);
             }
 
             // صف الإجمالي
             var totalRow = payroll.Workers.Count + 3;
             sheet.Cell(totalRow, 2).Value = "الإجمالي";
-            sheet.Cell(totalRow, 8).Value = payroll.TotalWageEgp;
-            sheet.Cell(totalRow, 8).Style.NumberFormat.Format = "#,##0 \"ج\"";
-            sheet.Range(totalRow, 1, totalRow, 8).Style.Font.SetBold();
-            sheet.Range(totalRow, 1, totalRow, 8).Style.Fill.SetBackgroundColor(XLColor.FromHtml("#E8EDF7"));
+            sheet.Cell(totalRow, 8).Value = payroll.Workers.Sum(w => w.BonusEgp);
+            sheet.Cell(totalRow, 9).Value = payroll.Workers.Sum(w => w.AdvanceEgp);
+            sheet.Cell(totalRow, 10).Value = payroll.TotalWageEgp;
+            sheet.Cell(totalRow, 10).Style.NumberFormat.Format = "#,##0 \"ج\"";
+            sheet.Range(totalRow, 1, totalRow, cols).Style.Font.SetBold();
+            sheet.Range(totalRow, 1, totalRow, cols).Style.Fill.SetBackgroundColor(XLColor.FromHtml("#E8EDF7"));
 
-            var table = sheet.Range(2, 1, totalRow, 8);
+            var table = sheet.Range(2, 1, totalRow, cols);
             table.Style.Border.SetOutsideBorder(XLBorderStyleValues.Medium);
             table.Style.Border.SetInsideBorder(XLBorderStyleValues.Thin);
             table.Style.Alignment.SetVertical(XLAlignmentVerticalValues.Center);
-            sheet.Range(3, 3, totalRow, 8).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+            sheet.Range(3, 3, totalRow, cols).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
 
             sheet.SheetView.FreezeRows(2);
             sheet.Columns().AdjustToContents();
@@ -292,8 +300,11 @@ namespace WorkforceManager.Business.Services
             if (report.DailyWageEgp > 0)
             {
                 Info("سعر اليومية", $"{report.DailyWageEgp:N0} ج");
-                Info("الأجر بالجنيه", $"{report.NetWageEgp:N0} ج");
+                Info("أجر اليوميات", $"{report.WorkdaysWageEgp:N0} ج");
             }
+            if (report.BonusEgp > 0) Info("الحوافز", $"+ {report.BonusEgp:N0} ج");
+            if (report.AdvanceEgp > 0) Info("السلف", $"− {report.AdvanceEgp:N0} ج");
+            Info("الأجر النهائي", $"{report.NetWageEgp:N0} ج");
 
             // تفصيل الإنتاج بالمنتج/المرحلة
             row += 1;
